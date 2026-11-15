@@ -176,6 +176,14 @@
     body.phone .event .box::before{display:none}
   }
   img.finale{display:block;width:100%;height:auto;border-radius:10px;border:2px solid #b8913a;box-shadow:0 4px 14px rgba(0,0,0,.35);margin:4px 0 6px}
+  .bstats{text-align:left;margin:10px 0;padding:10px 14px;border:1px solid #b8913a88;border-radius:10px;background:#fff6;font-size:.92em}
+  .bstats h4{margin:0 0 6px;text-align:center;font-variant:small-caps;letter-spacing:.04em}
+  .bstats p{margin:3px 0}
+  .bstats table{width:100%;border-collapse:collapse;margin-top:6px}
+  .bstats td{padding:2px 4px;border-top:1px solid #b8913a44}
+  .bstats td:nth-child(n+2){text-align:right;white-space:nowrap}
+  .bstats .stars{color:#b8860b}
+  .bstats .up{color:#2f7a2f}
   .finale-cap{text-align:center;font-style:italic;opacity:.8;margin:0 0 10px}
   img.finale.portrait{width:auto;max-width:72%;max-height:46vh;margin:4px auto 8px}
   img.finale.portrait.tall{max-height:36vh}
@@ -525,7 +533,7 @@ function trigReady(T) {
   if (T.cleared) return !alive(1).length;
   if (T.turn && S.turn >= (T.after ? S.fired[T.after] + T.turn : T.turn)) return true;
   const ps = alive(0);
-  if (T.near && ps.some(u => !u.wild && hexDist(u.c, u.r, T.near[0], T.near[1]) <= (T.d || 1) && (!T.armyNear || u.army))) return true;
+  if (T.near && ps.some(u => !u.wild && hexDist(u.c, u.r, T.near[0], T.near[1]) <= (T.d ?? 1) && (!T.armyNear || u.army))) return true;
   if (T.west !== undefined && ps.some(u => u.c <= T.west && (!T.armyWest || u.army))) return true;
   return false;
 }
@@ -539,7 +547,7 @@ async function runTriggers() {
       const q = T.army.map(s => s.slice());
       while (q.length && spots.length < S.reserve.length + (T.join || []).length) { const [c, r] = q.shift(); const k = K(c, r); if (seen.has(k) || !HEX.has(k)) continue; seen.add(k); if (isFinite(TER[terr(c, r)].cost) && !unitAt(c, r)) spots.push([c, r]); for (const n of neighbors(c, r)) q.push(n); }
       const all = S.reserve.concat((T.join || []).map(vet)); S.reserve = [];
-      all.forEach((v, i) => { const sp = spots[i]; if (!sp) { S.reserve.push(v); return; } const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = v.xp; u.lvl = v.lvl; u.kills = v.kills || 0; u.hp = maxHp(u); u.army = true; u.moved = u.acted = true; first = first || u; });
+      all.forEach((v, i) => { const sp = spots[i]; if (!sp) { S.reserve.push(v); return; } const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = u.xp0 = v.xp; u.lvl = u.lvl0 = v.lvl; u.kills = u.k0 = v.kills || 0; u.hp = maxHp(u); u.army = true; u.moved = u.acted = true; first = first || u; });
       if (first) fxText(first, 'Die Streitmacht!', '#9cff9c');
     }
     for (const [t, c, r, flag] of T.spawn || []) {
@@ -550,6 +558,7 @@ async function runTriggers() {
     }
     if (T.wake) for (const e of alive(1)) e.waitR = 0;
     if (T.sanctuary) S.sanctuary = T.sanctuary;
+    if (T.reveal) { const [rc, rr, rd] = T.reveal; S.scouted = S.scouted || new Set(); for (const hx of HEX.values()) if (hexDist(rc, rr, hx.c, hx.r) <= rd) S.scouted.add(K(hx.c, hx.r)); S.fogSig = ''; updateVision(); }
     if (T.heal) for (const u of alive(0)) if (hexDist(u.c, u.r, T.near[0], T.near[1]) <= T.heal) { u.hp = maxHp(u); fxText(u, 'Erholt!', '#9cff9c'); }
     if (T.look) ensureVisible(T.look[0], T.look[1]); else if (first) ensureVisible(first.c, first.r);
     log(T.log || T.title, T.spawn ? 'e' : 's');
@@ -993,7 +1002,7 @@ const MISSIONS = [
    "ffffffffcccFcccfcfffffffffffffffafffff.....fffff",
    "fdddffffccccccFccfffddddfffffffaffffff..HII.ffff",
    "dffdffddcccccccccdddfffdfffddddadddfff..dddddfff",
-   "ffffdddffcFccccFcf.fffffddddfffafffddddddd.ffddd",
+   "ffffdddffcFccccFcf.fffffddddfffafffddddddf.ffddd",
    "ffffffffcccccFcfcff..ffffffffffafffffff.ffffffff",
    "ffffffffdcfccccfcff...fffffffffaffffffffffffffff",
    "fffffffdfcffccfffff..ffffff..ffaffffffffffffffff",
@@ -1226,17 +1235,22 @@ const MISSIONS = [
     "id": "einsiedler",
     "near": [
      40,
-     10
+     11
     ],
-    "d": 1,
+    "d": 0,
     "place": "Eine Lichtung im Fangron",
     "title": "Der alte Einsiedler",
-    "text": "Auf der Lichtung steht eine schöne, kleine Hütte, aus dem Kamin steigt Rauch. Neben der Hütte liegt ein Teich, eine Ente zieht ihre Kreise.<br><br>Ihr klopft. Ein alter Einsiedler mit Wanderstab öffnet, eine Elster sitzt auf seiner Schulter. Er schaut euch lange an und reicht euch heißen Kräutertee. „Die Orks? Die sind im Westen. Seht ihr den Rauch? Dort fressen sie meinen Wald.“<br><br>Dann sagt er noch: „Wenn ihr verwundet seid, kommt zurück. Mein Tee heilt so manche Wunde.“<br><br><small>Ab jetzt erholt sich jede Einheit, die neben der Hütte steht, zu Beginn deiner Runde um 6 Lebenspunkte.</small>",
+    "text": "Auf der Lichtung steht eine schöne, kleine Hütte, aus dem Kamin steigt Rauch. Neben der Hütte liegt ein Teich, eine Ente zieht ihre Kreise.<br><br>Ihr klopft. Ein alter Einsiedler mit Wanderstab öffnet, eine Elster sitzt auf seiner Schulter. Er schaut euch lange an und reicht euch heißen Kräutertee. „Die Orks? Die sind im Westen. Seht ihr den Rauch? Dort fressen sie meinen Wald.“<br><br>Dann pfeift er, und die Elster fliegt los. „Wartet. Ich kann euch sagen, wo die Aschhorde ist.“ Kurz darauf kehrt sie zurück und krächzt ihm ins Ohr. Er zeichnet mit dem Stab das Lager der Orks in den Staub: wo die Wachen stehen, wo die Schützen lauern und wo der große Schwarzork brüllt.<br><br><small>Der Nebel über dem Holzfällerlager im Westen hat sich gelichtet: Ihr seht jetzt, wo die Horde steht.</small>",
     "img": "held",
-    "log": "Der Einsiedler schickt euch nach Westen.",
-    "sanctuary": [
-     40,
-     10
+    "log": "Der Einsiedler verrät euch, wo die Aschhorde lagert.",
+    "reveal": [
+     12,
+     11,
+     4
+    ],
+    "look": [
+     12,
+     11
     ]
    },
    {
@@ -1410,8 +1424,8 @@ const MISSIONS = [
      11
     ],
     [
-     41,
-     12
+     40,
+     11
     ],
     [
      40,
@@ -1726,20 +1740,6 @@ const MISSIONS = [
     [
      0,
      19
-    ]
-   ],
-   [
-    [
-     40,
-     10
-    ],
-    [
-     40,
-     11
-    ],
-    [
-     41,
-     12
     ]
    ]
   ],
@@ -2768,7 +2768,7 @@ function setupBattle(M, roster) {
     };
     S.reserve = [];
     if (M.vanguard) { const keep = new Set(); roster.forEach((v, i) => { if (M.vanguard.includes(v.type) && ![...keep].some(j => roster[j].type === v.type)) keep.add(i); }); roster = roster.filter((v, i) => { if (keep.has(i)) return true; S.reserve.push(v); return false; }); }
-    roster.forEach((v, i) => { const sp = spotFor(i); if (!sp) return; taken.add(K(sp[0], sp[1])); const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = v.xp; u.lvl = v.lvl; u.kills = v.kills || 0; u.hp = maxHp(u); });
+    roster.forEach((v, i) => { const sp = spotFor(i); if (!sp) return; taken.add(K(sp[0], sp[1])); const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = u.xp0 = v.xp; u.lvl = u.lvl0 = v.lvl; u.kills = u.k0 = v.kills || 0; u.hp = maxHp(u); });
     (M.joinUnits || []).forEach((t, i) => { const [c, r] = M.join[i]; addUnit(t, 0, c, r); });
     S.fired = {};
     for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r); if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; u.post = [c, r]; foeVet(u, M); }
@@ -2885,6 +2885,20 @@ function showMenu() {
     li.onclick = () => { if (!CAMP) newCampaign(); CAMP.mission = i; startMission(i); };
   });
 }
+function battleStats() {
+  const mine = S.units.filter(u => u.side === 0 && !u.wild);
+  const lost = mine.filter(u => u.hp <= 0), alive0 = mine.filter(u => u.hp > 0);
+  const foes = {}; for (const u of S.units) if (u.side !== 0 && u.hp <= 0) foes[u.type] = (foes[u.type] || 0) + 1;
+  const foeTxt = Object.entries(foes).map(([t, n]) => `${n}× ${TYPES[t].name}`).join(', ') || 'keine';
+  const rows = alive0.sort((a, b) => (b.xp - (b.xp0 || 0)) - (a.xp - (a.xp0 || 0))).map(u => {
+    const gain = u.xp - (u.xp0 || 0), k = u.kills - (u.k0 || 0), up = u.lvl > (u.lvl0 || 0);
+    return `<tr><td>${uname(u)} <span class="stars">${'★'.repeat(u.lvl)}</span></td><td>+${gain} EP</td><td>${k ? k + ' ☠' : ''}</td><td>${up ? `<b class="up">Stufe ${u.lvl + 1}!</b>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="bstats"><h4>Bilanz der Schlacht · ${S.turn} Runde${S.turn > 1 ? "n" : ""}</h4>
+    <p><b>Eure Verluste:</b> ${lost.length ? lost.map(uname).join(', ') : 'keine, alle haben überlebt!'}</p>
+    <p><b>Besiegte Feinde:</b> ${foeTxt}</p>
+    ${rows ? `<table>${rows}</table>` : ''}</div>`;
+}
 function missionResult(win) {
   const M = S.mission;
   if (M.tutorial) {
@@ -2909,12 +2923,12 @@ function missionResult(win) {
     const last = i + 1 >= MISSIONS.length;
     const newOnes = (M.reward || []).length ? `<div class="goal"><b>Neu im Heer:</b> ${(M.reward).map(unitNameT).join(', ')}</div>` : '';
     showStory(last ? 'Kampagne gewonnen!' : `Mission ${i + 1} gewonnen!`, last ? 'Eldor ist frei!' : 'Sieg!',
-      `${M.id === 'm1' ? `<img class="finale" src="${LINDEN_IMG}" alt="Der Befreier von Lindenhain">` : ''}<p>${heroText(M.outro)}</p>${last ? `<p class="finale-cap">Am Abend, in der Schenke von Eldor …</p><img class="finale" src="${FINALE_IMG}" alt="Der Werbär und ${HERO_NAME} stoßen in der Schenke an">` : ''}${newOnes}<p><small>Dein Heer (${CAMP.roster.length} Einheiten) zieht weiter. Gefallene Kämpfer bleiben zurück.</small></p>${rosterHtml(CAMP.roster)}`,
+      `${M.id === 'm1' ? `<img class="finale" src="${LINDEN_IMG}" alt="Der Befreier von Lindenhain">` : ''}<p>${heroText(M.outro)}</p>${battleStats()}${last ? `<p class="finale-cap">Am Abend, in der Schenke von Eldor …</p><img class="finale" src="${FINALE_IMG}" alt="Der Werbär und ${HERO_NAME} stoßen in der Schenke an">` : ''}${newOnes}<p><small>Dein Heer (${CAMP.roster.length} Einheiten) zieht weiter. Gefallene Kämpfer bleiben zurück.</small></p>${rosterHtml(CAMP.roster)}`,
       last ? [{ label: 'Zum Menü', main: true, fn: showMenu }] : [{ label: `Weiter: ${MISSIONS[i + 1].title}`, main: true, fn: () => startMission(i + 1) }, { label: 'Menü', fn: showMenu }], last ? 'held' : ((M.reward || [])[0] || 'held'));
   } else {
     const heroDead = !alive(0).some(u => TYPES[u.type].hero);
     showStory(`Mission ${i + 1}: ${M.title}`, 'Niederlage',
-      `<p>${heroDead ? `${HERO_NAME} ist gefallen … Ohne seinen Anführer zerstreut sich der Widerstand.` : 'Dein Heer wurde geschlagen.'}</p><p>Doch noch ist nichts verloren. Versuch es noch einmal!</p>`,
+      `<p>${heroDead ? `${HERO_NAME} ist gefallen … Ohne seinen Anführer zerstreut sich der Widerstand.` : 'Dein Heer wurde geschlagen.'}</p><p>Doch noch ist nichts verloren. Versuch es noch einmal!</p>${battleStats()}`,
       [{ label: 'Mission wiederholen', main: true, fn: () => { CAMP.roster = CAMP.startRoster || CAMP.roster; startMission(i); } }, { label: 'Menü', fn: () => { CAMP.roster = CAMP.startRoster || CAMP.roster; saveCamp(); showMenu(); } }], { type: 'aschfuerst', side: 1 });
   }
 }
@@ -2989,13 +3003,20 @@ function updateVision() {
   if (!S || !S.fog) return;
   const me = alive(0), sig = me.map(u => u.c + ',' + u.r + u.type).join('|');
   if (sig === S.fogSig) return;
-  S.fogSig = sig; S.vis = new Set();
+  S.fogSig = sig; S.vis = new Set(S.scouted || []);
+  for (const k of S.vis) S.seen.add(k);
   for (const h of HEX.values()) for (const u of me) if (hexDist(u.c, u.r, h.c, h.r) <= sightOf(u)) { const k = K(h.c, h.r); S.vis.add(k); S.seen.add(k); break; }
 }
 function shown(u) {
   if (!S.fog || u.side === 0) return true;
   if (u.px != null) { const h = pixelToHex(u.px, u.py); if (h && S.vis.has(K(h.c, h.r))) return true; }
   return S.vis.has(K(u.c, u.r));
+}
+function fogHides(o, live) { // live: nur aktuell gesehene Felder zeigen; sonst reicht schon erkundet
+  if (!S || !S.fog) return false;
+  if (o.hk === undefined) { const hx = pixelToHex(o.x, o.y + (o.k === 'critter' ? -6 : 0)); o.hk = hx ? K(hx.c, hx.r) : null; }
+  if (o.hk === null) return false;
+  return !(live ? S.vis : S.seen).has(o.hk);
 }
 function drawFog() {
   if (!S.fog) return;
@@ -3915,6 +3936,7 @@ function drawAmbientUnder(now) {
 function drawAmbientOver(now) {
   const t = now / 1000;
   for (const m of AMB.motes) {
+    if (fogHides(m, false)) continue;
     const x = m.x + Math.sin(t * 0.5 * m.sp + m.ph) * 16 + Math.sin(t * 1.3 + m.ph * 2) * 4;
     const y = m.y - 8 + Math.cos(t * 0.4 * m.sp + m.ph * 1.7) * 12;
     const a = Math.max(0, Math.sin(t * 1.6 * m.sp + m.ph * 3));
@@ -4332,7 +4354,9 @@ function drawFangronFx(now) {
   const t = now / 1000;
   for (const f of FANG_FX) {
     if (!inView(f.x, f.y, 160)) continue;
-    if (f.k === 'fire') {
+    const hid = fogHides(f, true);
+    if (hid && f.k !== 'fire' && f.k !== 'chimney') continue;   // Tiere & Co. im Nebel unsichtbar, nur Rauch steigt auf
+    if (f.k === 'fire' && !hid) {
       for (let i = 0; i < 4; i++) {
         const fl = Math.sin(t * 9 + f.ph + i * 1.7), w = 4.5 - i * 0.6, hh = 12 + fl * 3 + (i % 2) * 4;
         const fx = f.x - 8 + i * 5.5;
@@ -4349,7 +4373,7 @@ function drawFangronFx(now) {
         ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
       }
     }
-    if (f.k === 'critter') { if (!unitAt(f.c, f.r)) drawCritter(f.kind, f.x, f.y, t, f.ph); continue; }
+    if (f.k === 'critter') { if (!unitAt(f.c, f.r) && !(S.fog && !S.vis.has(K(f.c, f.r)))) drawCritter(f.kind, f.x, f.y, t, f.ph); continue; }
     if (f.k === 'duck') {
       const a = t * 0.4, dx = f.x + Math.cos(a) * (f.wide ? 30 : 13), dy = f.y + Math.sin(a) * 7, dir = -Math.sin(a) > 0 ? 1 : -1;
       ctx.save(); ctx.translate(dx, dy); ctx.scale(dir, 1);
