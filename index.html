@@ -405,18 +405,18 @@ const TYPES = {
              desc: 'Bauer aus den Reisfeldern mit Bambusspeer und Strohhut. Schwach, aber mutig. Im Reisfeld kommt er so leicht voran wie auf der Wiese.' },
   yumi:    { name: 'Bogenschützin', icon: '🏹', hp: 20, atk: 6, def: 2, mv: 3, rng: 3, counter: 0.5, hill: true, art: 'Die',
              desc: 'Schützin mit dem langen Schreinbogen. Fernkampf bis 3 Felder, auf Hügeln +2 Angriff.' },
-  holz:    { name: 'Holzkrieger', icon: '🪵', hp: 22, atk: 6, def: 2, mv: 4, rng: 1, counter: 0.7, wood: true,
-             desc: 'Ein Seelenloser aus dunklem Holz: schnell und leise, aber nicht sehr zäh. Statt eines Gesichts trägt er eine glatte Maske. Holz brennt: Brandpfeile setzen ihn in Flammen.' },
+  holz:    { name: 'Holzkrieger', icon: '🪵', hp: 24, atk: 6, def: 4, mv: 3, rng: 1, counter: 0.7, wood: true,
+             desc: 'Ein Seelenloser aus dunklem Holz, die leichteste der drei Rüstungen. Statt eines Gesichts trägt er eine glatte Maske. Holz brennt: Brandpfeile setzen ihn in Flammen.' },
   stein:   { name: 'Steinkrieger', icon: '🗿', hp: 36, atk: 8, def: 6, mv: 2, rng: 1, counter: 1.0, stone: true,
-             desc: 'Ein Seelenloser aus grauem Stein: langsam, aber kaum zu verwunden. Pfeile prallen fast wirkungslos ab. Netze machen ihn noch langsamer, Spitzhacken zertrümmern ihn.' },
+             desc: 'Ein Seelenloser aus grauem Stein, härter als Holz: langsam, aber kaum zu verwunden. Pfeile prallen fast wirkungslos ab. Netze machen ihn noch langsamer, Spitzhacken zertrümmern ihn.' },
   honoo:   { name: 'Honoo', icon: '🔥', hp: 22, atk: 7, def: 2, mv: 3, rng: 3, counter: 0.5, hill: true, fire: true, art: 'Die',
              desc: 'Kokoros Freundin. Ihr Name heißt „Flamme“. Schießt Brandpfeile bis 3 Felder weit: Holzkrieger fangen Feuer, nehmen +3 Schaden und brennen 3 Runden lang weiter (4 Schaden pro Runde). Gegen Stein prallen ihre Pfeile ab.' },
   tamashi: { name: 'Tamashi', icon: '🏮', hp: 26, atk: 3, def: 1, mv: 0, rng: 1, counter: 0.4, protect: true, art: 'Die',
              desc: 'Kokoros Mutter. Dieses Jahr ist sie an der Reihe. Sie bleibt in ihrem Haus und wartet. Wird Tamashi geholt, ist die Mission verloren!' },
   netzbauer: { name: 'Bauer mit Netz', icon: '🕸️', hp: 24, atk: 6, def: 2, mv: 4, rng: 1, counter: 0.7, net: true, pick: true,
              desc: 'Flinker Bauer aus Kirisato mit Fischernetz und Spitzhacke. Sein Netz macht Gegner langsamer (zwei Netze halten einen Steinkrieger fast fest). Mit der Spitzhacke +5 Angriff gegen Stein.' },
-  jade:    { name: 'Jadekrieger', icon: '💠', hp: 30, atk: 7, def: 3, mv: 3, rng: 2, counter: 0.4, magic: true, bolt: '#7dffc4', jadeSkin: true,
-             desc: 'Ein leuchtender Seelenloser aus grüner Jade, geboren aus grünem Nebel. Schleudert grüne Blitze 2 Felder weit, die Häuser in Brand setzen. Gewöhnliche Waffen prallen an ihm ab. Nur eine kristallklare Klinge kann ihn brechen.' },
+  jade:    { name: 'Jadekrieger', icon: '💠', hp: 40, atk: 10, def: 8, mv: 3, rng: 2, counter: 0.8, magic: true, bolt: '#7dffc4', jadeSkin: true,
+             desc: 'Der stärkste Seelenlose, aus leuchtender grüner Jade, geboren aus grünem Nebel. Spezialfähigkeit: schleudert grüne Blitze 2 Felder weit, die Häuser in Brand setzen. Gewöhnliche Waffen prallen an ihm ab. Nur eine kristallklare Klinge kann ihn brechen.' },
   tamashi_k: { name: 'Tamashi', icon: '🗡️', hp: 26, atk: 8, def: 2, mv: 3, rng: 1, counter: 0.6, protect: true, crystal: true, art: 'Die',
              desc: 'Kokoros Mutter mit dem Schwert mit der kristallklaren Klinge. Nur dieses Schwert durchdringt Jade. Wird Tamashi geholt, ist die Mission verloren!' }
 };
@@ -3143,7 +3143,7 @@ const CATS = {
 };
 const CAT_OF = { held: 'anf', aschfuerst: 'anf', miliz: 'plaenk', dryade: 'plaenk', schild: 'schwer', zwerg: 'schwer', asche: 'schwer', schwarzork: 'schwer',
   bogen: 'bogen', dorn: 'bogen', hirsch: 'reiter', wolf: 'reiter', stern: 'magier', schatten: 'magier',
-  greif: 'flieger', katapult: 'belag', kokoro: 'anf', honoo: 'bogen', tamashi: 'plaenk', tamashi_k: 'plaenk', netzbauer: 'plaenk', reisbauer: 'plaenk', yumi: 'bogen', holz: 'plaenk', stein: 'schwer', jade: 'magier', baer: 'monster', eiche: 'monster', troll: 'monster', gruft: 'monster', dunkelwolf: 'monster' };
+  greif: 'flieger', katapult: 'belag', kokoro: 'anf', honoo: 'bogen', tamashi: 'plaenk', tamashi_k: 'plaenk', netzbauer: 'plaenk', reisbauer: 'plaenk', yumi: 'bogen', holz: 'schwer', stein: 'schwer', jade: 'schwer', baer: 'monster', eiche: 'monster', troll: 'monster', gruft: 'monster', dunkelwolf: 'monster' };
 const catOf = type => CAT_OF[type] || 'schwer';
 // Nebel des Krieges: leichte Späher sehen weit, schwere Truppen kurz
 const SIGHT = { plaenk: 5, reiter: 5, flieger: 6, magier: 4, bogen: 4, anf: 4, schwer: 3, belag: 3, monster: 3 };
