@@ -6514,7 +6514,8 @@ function kirsche(g, tx, ty, s) {
   g.lineWidth = 1.2; g.beginPath(); g.moveTo(tx, ty - s * 0.5); g.lineTo(tx - s * 0.6, ty - s * 0.95); g.moveTo(tx + 0.3, ty - s * 0.6); g.lineTo(tx + s * 0.55, ty - s * 1.0); g.stroke();
   const cy = ty - 4 - s * 0.95;
   const lg = g.createRadialGradient(tx - s * 0.35, cy - s * 0.4, 1, tx, cy, s * 1.15);
-  lg.addColorStop(0, '#ffe8f0'); lg.addColorStop(0.55, '#f2a8c4'); lg.addColorStop(1, '#c46a90');
+  const weiss = hash(tx | 0, ty | 0, 77) > 0.55;
+  lg.addColorStop(0, '#ffffff'); lg.addColorStop(0.55, weiss ? '#f2eef0' : '#f2a8c4'); lg.addColorStop(1, weiss ? '#c8bcc4' : '#c46a90');
   g.fillStyle = lg;
   g.beginPath(); g.arc(tx - s * 0.5, cy + s * 0.15, s * 0.55, 0, 7); g.arc(tx + s * 0.5, cy + s * 0.12, s * 0.56, 0, 7); g.arc(tx, cy - s * 0.3, s * 0.62, 0, 7); g.arc(tx + s * 0.05, cy + s * 0.3, s * 0.5, 0, 7); g.fill();
   g.fillStyle = 'rgba(255,255,255,0.75)';
