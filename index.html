@@ -3582,6 +3582,9 @@ function hash(c, r, n = 0) { let h = (c * 374761393 + r * 668265263 + n * 214748
 const GROUND = { 'R': [104, 150, 128], 'o': [136, 158, 84], '.': [116, 166, 78], 'f': [70, 118, 58], 'h': [170, 150, 98], 'w': [56, 118, 176], 'u': [92, 150, 186], 'v': [128, 166, 86],
   'b': [56, 118, 176], 'd': [116, 166, 78], 's': [150, 146, 136], 'x': [150, 146, 136], 'm': [140, 138, 132], 't': [140, 138, 132], 'k': [154, 150, 140], 'z': [170, 150, 98],
   'c': [132, 164, 80], 'g': [118, 96, 62], 'y': [118, 96, 62], 'p': [126, 112, 70], 'q': [126, 112, 70], 'n': [126, 112, 70], 'r': [134, 116, 84], 'e': [120, 128, 84], 'a': [112, 158, 80], 'j': [128, 158, 84], 'i': [60, 122, 170], 'l': [146, 152, 88], 'W': [146, 152, 88], 'N': [126, 112, 70], 'B': [150, 146, 104], 'V': [150, 146, 104], 'K': [150, 146, 104], 'H': [118, 164, 76], 'F': [132, 150, 80], 'I': [116, 166, 78] };
+// Land der roten Sonne: helleres, türkises Grün und hellgraue Berge
+const GROUND_SONNE = { '.': [128, 194, 164], 'd': [128, 194, 164], 'o': [136, 196, 166], 'v': [138, 196, 166], 'f': [84, 150, 124], 'h': [186, 192, 188], 'R': [122, 182, 168], 'w': [60, 132, 170], 'b': [60, 132, 170], 'u': [96, 164, 184] };
+const groundOf = t => (STYLE === 'sonne' && GROUND_SONNE[t]) || GROUND[t];
 const SOFT = new Set(['.', 'f', 'h', 'v', 'd', 'z', 'o', 'c', 'a', 'j', 'l', 'W', 'I', 'H']), WET = new Set(['w', 'u', 'b', 'i']), ROADS = new Set(['d', 's', 'b', 't', 'k', 'y', 'n']);
 const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 function landNoise(x, y) { return Math.sin(x * 0.021 + Math.sin(y * 0.017) * 2) * 0.5 + Math.sin(y * 0.026 - x * 0.011) * 0.5; }
@@ -3599,7 +3602,7 @@ function buildTerrain() {
   const E = R * SQ3 / 2;
   // 1) Grundfarben mit sanftem Rauschen
   for (const h of hexes) {
-    const { x, y } = center(h.c, h.r), base = GROUND[h.t] || TER[h.t].col;
+    const { x, y } = center(h.c, h.r), base = groundOf(h.t) || TER[h.t].col;
     const v = landNoise(x, y) * 9 + (hash(h.c, h.r) - 0.5) * 6;
     hexPath(g, x, y, R + 0.6); g.fillStyle = rgb([base[0] + v, base[1] + v, base[2] + v * 0.6]); g.fill();
   }
@@ -3615,7 +3618,7 @@ function buildTerrain() {
       let col, a, depth;
       if (!wetH && wetN) { col = [214, 196, 140]; a = 0.85; depth = 9; }          // Uferstreifen
       else if (wetH && !wetN) { col = [190, 225, 240]; a = 0.45; depth = 8; }     // helles Flachwasser
-      else if (SOFT.has(h.t) && SOFT.has(n.t)) { col = GROUND[n.t]; a = 0.6; depth = 16; }
+      else if (SOFT.has(h.t) && SOFT.has(n.t)) { col = groundOf(n.t); a = 0.6; depth = 16; }
       else continue;
       const gr = g.createLinearGradient(ex, ey, ex - dx * depth, ey - dy * depth);
       gr.addColorStop(0, rgb(col, a)); gr.addColorStop(1, rgb(col, 0));
@@ -3720,7 +3723,7 @@ function buildTerrain() {
     else if (h.t === 'V' || h.t === 'K') drawKeepTall(g, h, x, y);
     else if (h.t === 'H' || h.t === 'F') drawFangronTall(g, h, x, y);
     else if (h.t === 'j') drawSawmill(g, h, x, y);
-    else if (h.t === '.' || h.t === 'd') { drawFieldTall(g, h, x, y); drawMeadowEdge(g, h, x, y); }
+    else if (h.t === '.' || h.t === 'd') { drawFieldTall(g, h, x, y); drawMeadowEdge(g, h, x, y); if (STYLE === 'sonne' && h.t === '.') felsen(g, h, x, y); }
   }
   for (const [c, r, k] of MAP_CARTS) { const p = center(c, r); drawLogLoad(g, p.x, p.y, k, hash(c, r, 3)); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
@@ -3842,11 +3845,13 @@ function drawMeadowEdge(g, h, x, y) {
 function mound(g, bx, by, s, hgt = 1) {
   shadowEll(g, bx + s * 0.25, by + 1, s * 1.08, s * 0.3, 0.25);
   const hg = g.createLinearGradient(bx - s, by - s * hgt, bx + s, by);
-  hg.addColorStop(0, '#dcc890'); hg.addColorStop(0.45, '#a88e58'); hg.addColorStop(1, '#6a5632');
+  const sun = STYLE === 'sonne';
+  hg.addColorStop(0, sun ? '#eef0ec' : '#dcc890'); hg.addColorStop(0.45, sun ? '#b4bab6' : '#a88e58'); hg.addColorStop(1, sun ? '#727a78' : '#6a5632');
   g.fillStyle = hg;
   g.beginPath(); g.moveTo(bx - s, by); g.bezierCurveTo(bx - s * 0.65, by - s * 1.05 * hgt, bx + s * 0.25, by - s * 1.3 * hgt, bx + s, by); g.closePath(); g.fill();
-  g.strokeStyle = 'rgba(80,62,30,0.55)'; g.lineWidth = 1; g.stroke();
-  g.fillStyle = 'rgba(90,135,50,0.5)';
+  g.strokeStyle = sun ? 'rgba(60,66,64,0.55)' : 'rgba(80,62,30,0.55)'; g.lineWidth = 1; g.stroke();
+  if (sun) { g.strokeStyle = 'rgba(70,76,74,0.4)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(bx + s * 0.1, by - s * 0.95 * hgt); g.lineTo(bx + s * 0.25, by - s * 0.6 * hgt); g.lineTo(bx + s * 0.15, by - s * 0.35 * hgt); g.stroke(); }
+  g.fillStyle = sun ? 'rgba(96,170,138,0.55)' : 'rgba(90,135,50,0.5)';
   g.beginPath(); g.moveTo(bx - s, by); g.bezierCurveTo(bx - s * 0.5, by - s * 0.32, bx + s * 0.5, by - s * 0.28, bx + s, by); g.closePath(); g.fill();
   g.strokeStyle = 'rgba(255,250,220,0.35)'; g.lineWidth = 1.2;
   g.beginPath(); g.moveTo(bx - s * 0.55, by - s * 0.45 * hgt); g.quadraticCurveTo(bx - s * 0.25, by - s * 0.9 * hgt, bx + s * 0.05, by - s * 0.95 * hgt); g.stroke();
@@ -4091,7 +4096,7 @@ function fairyDetails(g, h, x, y) {
 function applyPatina(g) {
   g.save();
   g.globalCompositeOperation = 'soft-light';
-  g.fillStyle = 'rgba(255,190,110,0.32)'; g.fillRect(0, 0, W, H);
+  g.fillStyle = STYLE === 'sonne' ? 'rgba(200,240,230,0.26)' : 'rgba(255,190,110,0.32)'; g.fillRect(0, 0, W, H);
   g.globalCompositeOperation = 'overlay'; g.globalAlpha = 0.10;
   g.fillStyle = g.createPattern(GRAIN, 'repeat'); g.fillRect(0, 0, W, H);
   g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
@@ -6584,6 +6589,18 @@ function drawRice(g, h, x, y) {
     g.beginPath(); g.moveTo(rx, ry + 1.5); g.lineTo(rx - 1, ry - 1.5); g.moveTo(rx, ry + 1.5); g.lineTo(rx + 1, ry - 1.5); g.stroke();
   }
   g.restore();
+}
+// hellgraue Felsbrocken auf den Wiesen
+function felsen(g, h, x, y) {
+  if (hash(h.c, h.r, 700) < 0.55 || MAP_SECRETS.some(s => s.c === h.c && s.r === h.r)) return;
+  const n = 1 + (hash(h.c, h.r, 701) * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const bx = x + (hash(h.c, h.r, 710 + i) - 0.5) * R * 1.1, by = y + (hash(h.c, h.r, 720 + i) - 0.5) * R * 0.9, s = 3 + hash(h.c, h.r, 730 + i) * 4;
+    shadowEll(g, bx + 1.5, by + 1, s * 1.1, s * 0.4, 0.22);
+    g.beginPath(); g.moveTo(bx - s, by); g.quadraticCurveTo(bx - s * 0.9, by - s * 1.1, bx - s * 0.1, by - s * 1.05); g.quadraticCurveTo(bx + s * 0.9, by - s * 0.8, bx + s, by); g.closePath();
+    g.fillStyle = grad(g, bx - s, by - s, bx + s, by, '#f0f2ee', '#9aa29e'); g.fill(); g.lineWidth = 0.6; g.strokeStyle = 'rgba(60,66,64,0.6)'; g.stroke();
+    g.fillStyle = 'rgba(96,170,138,0.6)'; g.beginPath(); g.ellipse(bx - s * 0.3, by - s * 0.15, s * 0.45, s * 0.18, 0, 0, 7); g.fill();
+  }
 }
 function torii(g, x, y, explored) {
   const red = explored ? '#7a4a40' : '#c8322a', dk = explored ? '#3a2a26' : '#1e1410';
