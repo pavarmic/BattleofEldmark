@@ -2789,17 +2789,17 @@ const SONNE_MISSIONS = [
    "h......wbwww.....h",
    "wuwwwww.d......fff",
    "wh.......d......hh",
-   "h.f.RR..d...RR...h",
-   "fh.R..v.d.v...R.hf",
-   "h....v..d..v.....h",
-   "hf....v.vdv....fff",
-   "fh..R..vdv..RR..hh",
-   "h.f.R....d...R...h",
+   "h.f...R.d...R....h",
+   "fh..RRv.d.vRR...hf",
+   "h..RRv..d..vRR...h",
+   "hf..RRv.vdv.RR.fff",
+   "fh...RRvdv.RR...hh",
+   "h.f...R..d.R.....h",
    "fh......d.......hf"
   ],
   river: [[17, 2], [16, 2], [15, 2], [14, 3], [13, 3], [12, 3], [11, 3], [11, 4], [10, 4], [9, 4], [8, 4], [7, 4], [6, 5], [5, 5], [4, 5], [3, 5], [2, 5], [1, 5], [0, 5], [0, 6]],
   trails: [[[9, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [9, 6], [8, 7], [8, 8], [8, 9], [9, 10], [8, 11], [9, 12], [8, 13]]],
-  slots: [[8, 9], [9, 9], [7, 9], [9, 8], [7, 10], [9, 11], [7, 8], [10, 9], [6, 9], [8, 12], [7, 12], [10, 11]],
+  slots: [[8, 9], [9, 9], [7, 9], [9, 8], [7, 10], [9, 11], [7, 8], [10, 9], [8, 12], [10, 12], [8, 11], [9, 10]],
   joinUnits: ['tamashi'], join: [[8, 10]],
   enemy: [['holz', 5, 1], ['holz', 10, 1], ['holz', 13, 1], ['stein', 7, 3, 'dormant'], ['stein', 9, 3, 'dormant']],
   secrets: [],
@@ -4034,7 +4034,7 @@ function cow(g, x, y, k) {
 }
 function nearVillage(h) { return nbT(h).some(n => n.t === 'v'); }
 function fieldKind(h) {
-  if (h.t !== '.' || !nearVillage(h)) return null;
+  if (h.t !== '.' || !nearVillage(h) || STYLE === 'sonne') return null;
   if (MAP_SECRETS.some(s => s.c === h.c && s.r === h.r)) return null;
   const k = hash(h.c, h.r, 300);
   return k < 0.4 ? 'feld' : k < 0.75 ? 'weide' : null;
@@ -6843,25 +6843,41 @@ function minka(g, x, y, s, k) {
   }
 }
 function drawRice(g, h, x, y) {
+  const rn = n => hash(h.c, h.r, n);
   g.save(); hexPath(g, x, y, R + 0.4); g.clip();
-  const wg = g.createLinearGradient(x - R, y - R, x + R, y + R);
-  wg.addColorStop(0, '#9cc0b0'); wg.addColorStop(1, '#6a9a86');
+  // Wasserspiegel mit Himmel darin
+  const wg = g.createLinearGradient(x, y - R, x, y + R);
+  wg.addColorStop(0, '#b8dcd8'); wg.addColorStop(0.5, '#86bdb4'); wg.addColorStop(1, '#5f9a90');
   g.fillStyle = wg; g.fillRect(x - R, y - R, 2 * R, 2 * R);
-  g.fillStyle = 'rgba(255,255,240,0.25)'; g.beginPath(); g.ellipse(x - 8, y - 6, 9, 2, -0.3, 0, 7); g.fill();
-  // Dämme
-  const rot = (hash(h.c, h.r, 9) - 0.5) * 0.3;
-  g.translate(x, y); g.rotate(rot);
-  g.strokeStyle = '#8a7a4a'; g.lineWidth = 2.6;
-  for (const yy of [-R * 0.55, R * 0.1, R * 0.75]) { g.beginPath(); g.moveTo(-R * 1.2, yy); g.lineTo(R * 1.2, yy); g.stroke(); }
-  g.beginPath(); g.moveTo(R * 0.15, -R); g.lineTo(R * 0.15, R); g.stroke();
-  g.strokeStyle = 'rgba(140,190,90,0.6)'; g.lineWidth = 1; for (const yy of [-R * 0.55, R * 0.1, R * 0.75]) { g.beginPath(); g.moveTo(-R * 1.2, yy - 1.2); g.lineTo(R * 1.2, yy - 1.2); g.stroke(); }
-  // Reispflänzchen in Reihen
-  g.strokeStyle = '#5a9a30'; g.lineWidth = 0.9; g.lineCap = 'round';
-  for (let ry = -R * 0.9; ry < R; ry += 5.2) for (let rx = -R; rx < R; rx += 5) {
-    if ([-R * 0.55, R * 0.1, R * 0.75].some(d => Math.abs(ry - d) < 2.6) || Math.abs(rx - R * 0.15) < 2.6) continue;
-    g.beginPath(); g.moveTo(rx, ry + 1.5); g.lineTo(rx - 1, ry - 1.5); g.moveTo(rx, ry + 1.5); g.lineTo(rx + 1, ry - 1.5); g.stroke();
-  }
+  // Terrassen: geschwungene Dämme quer über das Feld
+  const tilt = (rn(9) - 0.5) * 10, ripe = rn(12) > 0.6;
+  const bank = (yy, k) => { g.beginPath(); g.moveTo(x - R * 1.2, yy + tilt); g.bezierCurveTo(x - R * 0.4, yy - 8 + k * 6, x + R * 0.3, yy + 9 - k * 5, x + R * 1.2, yy - tilt); };
+  const lines = [-R * 0.62, -R * 0.05, R * 0.55];
+  lines.forEach((yy, i) => {
+    // Pflanzreihen zwischen den Dämmen
+    const top = i ? lines[i - 1] : -R * 1.1;
+    g.strokeStyle = ripe && i === 1 ? 'rgba(190,180,70,0.9)' : 'rgba(64,140,46,0.9)'; g.lineWidth = 1; g.lineCap = 'round';
+    for (let ry = top + 5; ry < yy - 3; ry += 6) for (let rx = -R + ((ry / 6 | 0) % 2) * 3.5; rx < R; rx += 7) {
+      const px = x + rx, py = y + ry + tilt * (-rx / R) * 0.9 + Math.sin(rx / R * 2.6 + rn(i)) * 3;
+      g.beginPath(); g.moveTo(px, py + 1.4); g.lineTo(px - 1.1, py - 1.6); g.moveTo(px, py + 1.4); g.lineTo(px + 1.1, py - 1.6); g.stroke();
+    }
+    // Lichtreflex auf dem Wasser
+    g.strokeStyle = 'rgba(255,250,235,0.45)'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(x - R * 0.5 + rn(20 + i) * 10, y + yy - 4); g.lineTo(x - R * 0.1 + rn(20 + i) * 10, y + yy - 5); g.stroke();
+    // Damm: dunkle Kante, Erdkrone, grasiger Rand
+    bank(y + yy + 1.8, i); g.strokeStyle = 'rgba(60,50,30,0.45)'; g.lineWidth = 4; g.stroke();
+    bank(y + yy, i); g.strokeStyle = '#9a8656'; g.lineWidth = 3.2; g.stroke();
+    bank(y + yy - 1.2, i); g.strokeStyle = 'rgba(150,200,110,0.85)'; g.lineWidth = 1.1; g.stroke();
+  });
   g.restore();
+  // ab und zu ein weißer Reiher im Wasser
+  if (rn(40) > 0.82) {
+    const hx = x + (rn(41) - 0.5) * R * 0.8, hy = y + (rn(42) - 0.5) * R * 0.5;
+    g.strokeStyle = '#2a2a22'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(hx - 0.8, hy); g.lineTo(hx - 0.8, hy + 4); g.moveTo(hx + 0.8, hy); g.lineTo(hx + 0.8, hy + 4); g.stroke();
+    g.fillStyle = '#f6f4ec'; g.beginPath(); g.ellipse(hx, hy - 1, 4, 2.2, -0.25, 0, 7); g.fill();
+    g.strokeStyle = '#f6f4ec'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(hx + 2.5, hy - 2); g.quadraticCurveTo(hx + 3.5, hy - 6, hx + 2.4, hy - 7.5); g.stroke();
+    g.fillStyle = '#e0a020'; g.beginPath(); g.moveTo(hx + 2.4, hy - 8); g.lineTo(hx + 5.4, hy - 7.4); g.lineTo(hx + 2.6, hy - 7); g.fill();
+  }
 }
 // hellgraue Felsbrocken auf den Wiesen
 function felsen(g, h, x, y) {
