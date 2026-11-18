@@ -2762,20 +2762,24 @@ const SONNE_MISSIONS = [
   id: 's1', style: 'sonne',
   title: 'Kirisato', sub: 'Die Nacht der Laternen',
   map: [
-   "ffffhh.....d....ffff",
+   "ffffhh......d...ffff",
    "fff.h......d...hhfff",
    "ff.........d......hf",
-   "f...RRR....d..RRR..f",
-   "wwwwwwwwwwwbwwwwuwww",
-   "...RRRR....d..RRRR..",
+   "f...RRR...d...RRR..f",
+   "wwwwwwwwwwbwwwwwuwww",
+   "...RRRR...d...RRRR..",
    "..RRRRR....d..RRRR.h",
    "f..........d......hh",
-   "ff..v.v....d..v.v..f",
-   "f...vvdddddddddvv..f",
-   "ff...v.....d...v..ff",
-   "fff........d.....fff",
-   "ffff...h...d..h.ffff",
-   "fffff......d...fffff"
+   "ff..v.v.....ddvdv..f",
+   "f...vv..ddddd..vv..f",
+   "ff...vddd..d...v..ff",
+   "fff.......d......fff",
+   "ffff...h..d...h.ffff",
+   "fffff.....d....fffff"
+  ],
+  trails: [
+   [[12, 0], [11, 1], [11, 2], [10, 3], [10, 4], [10, 5], [11, 6], [11, 7], [12, 8], [11, 9], [11, 10], [10, 11], [10, 12], [10, 13]],
+   [[4, 9], [5, 9], [6, 10], [7, 10], [8, 10], [8, 9], [9, 9], [10, 9], [11, 9], [12, 9], [13, 8], [14, 8], [15, 8], [15, 9]]
   ],
   slots: [[11, 11], [10, 11], [12, 11], [10, 12], [12, 12], [11, 12], [9, 11], [13, 11], [9, 12], [13, 12], [11, 13], [10, 13]],
   join: [],
@@ -3687,6 +3691,11 @@ function buildTerrain() {
       const edge = ([c]) => c === 0 ? -1 : c === COLS - 1 ? 1 : 0;
       if (edge(tr[0])) pts.unshift([pts[0][0] + edge(tr[0]) * R * 1.4, pts[0][1]]);
       if (edge(tr[tr.length - 1])) pts.push([pts[pts.length - 1][0] + edge(tr[tr.length - 1]) * R * 1.4, pts[pts.length - 1][1]]);
+      if (STYLE === 'sonne') { // Wege in Japan: leicht geschlängelt, oben und unten bis über den Kartenrand
+        pts = pts.map(([px, py], i) => i === 0 || i === pts.length - 1 ? [px, py] : [px + (hash(px | 0, py | 0, 41) - 0.5) * R * 0.5, py + (hash(px | 0, py | 0, 42) - 0.5) * R * 0.3]);
+        if (tr[0][1] === 0) pts.unshift([pts[0][0], pts[0][1] - R * 1.4]);
+        if (tr[tr.length - 1][1] === ROWS - 1) pts.push([pts[pts.length - 1][0], pts[pts.length - 1][1] + R * 1.4]);
+      }
       for (let it = 0; it < 3; it++) { const q = [pts[0]]; for (let i = 0; i < pts.length - 1; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1]; q.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]); } q.push(pts[pts.length - 1]); pts = q; }
       chains.push(pts); } }
   g.lineCap = 'round'; g.lineJoin = 'round';
