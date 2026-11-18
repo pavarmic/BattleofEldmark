@@ -2779,7 +2779,7 @@ const TUTORIAL = {
 // ---------- Land der roten Sonne: Missionen ----------
 const SONNE_MISSIONS = [
  {
-  id: 's1', style: 'sonne',
+  id: 's1', style: 'sonne', dusk: true,
   title: 'Kirisato', sub: 'Die Nacht der Laternen',
   map: [
    "hhhf.hfh.dhh.hhffh",
@@ -2872,9 +2872,9 @@ function makeSecretsFor(spots, fixed) {
   shuffle(deck);
   return spots.map((sp, i) => ({ ...sp, outcome: deck[i % deck.length], explored: false }));
 }
-let STYLE = 'eldmark', MAP_RIVER = null;
+let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null;
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk;
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false,
@@ -3840,6 +3840,8 @@ function buildTerrain() {
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.32)');
   g.fillStyle = vg; g.fillRect(0, 0, W, H);
   applyPatina(g);
+  LANTERNS = [];
+  if (MAP_DUSK) duskLanterns(g);
   buildAmbient();
 }
 function groundDeco(g, h, x, y) {
@@ -4194,6 +4196,54 @@ function fairyDetails(g, h, x, y) {
     }
     g.restore();
   }
+}
+// Abendstimmung: Dämmerlicht über der Karte, Papierlaternen an Wegen und Häusern
+function duskLanterns(g) {
+  g.save();
+  g.globalCompositeOperation = 'multiply';
+  const dg = g.createLinearGradient(0, 0, 0, H);
+  dg.addColorStop(0, 'rgb(178,170,215)'); dg.addColorStop(0.55, 'rgb(222,206,214)'); dg.addColorStop(1, 'rgb(244,220,200)');
+  g.fillStyle = dg; g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = 'soft-light';
+  const sun = g.createRadialGradient(W * 0.5, -H * 0.15, 0, W * 0.5, -H * 0.15, H * 0.9);
+  sun.addColorStop(0, 'rgba(255,150,90,0.55)'); sun.addColorStop(1, 'rgba(255,150,90,0)');
+  g.fillStyle = sun; g.fillRect(0, 0, W, H);
+  g.restore();
+  const spots = [];
+  for (const h of HEX.values()) {
+    if (h.t !== 'v') continue;
+    const { x, y } = center(h.c, h.r), side = hash(h.c, h.r, 880) > 0.5 ? 1 : -1;
+    spots.push([x + side * 4, y + 15, 0]);
+  }
+  for (const tr of (MAP_TRAIL || [])) tr.forEach(([c, r], i) => {
+    if (i % 2 || r < 6) return;
+    const h = HEX.get(K(c, r)); if (!h || h.t === 'v') return;
+    const { x, y } = center(c, r); spots.push([x + (i % 4 ? 19 : -19), y + 6, 1]);
+  });
+  spots.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, pole] of spots) {
+    const top = pole ? y - 22 : y - 10;
+    shadowEll(g, x + 2, y + 1, 4, 1.4, 0.3);
+    g.strokeStyle = '#3a2614'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x, y); g.lineTo(x, top - 2); g.stroke();
+    if (pole) { g.beginPath(); g.moveTo(x - 1, top - 2); g.lineTo(x + 6, top - 2); g.stroke(); }
+    const lx = pole ? x + 5 : x, ly = top + 4;
+    g.fillStyle = '#ffd890'; g.beginPath(); g.ellipse(lx, ly, 3.6, 4.8, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(214,60,40,0.85)'; g.beginPath(); g.ellipse(lx, ly, 3.6, 4.8, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,230,150,0.9)'; g.beginPath(); g.ellipse(lx - 0.6, ly - 0.5, 1.8, 3, 0, 0, 7); g.fill();
+    g.fillStyle = '#2a1a10'; g.fillRect(lx - 2.4, ly - 5.6, 4.8, 1.4); g.fillRect(lx - 2.4, ly + 4.4, 4.8, 1.4);
+    LANTERNS.push({ x: lx, y: ly, ph: hash(x | 0, y | 0, 3) * 20 });
+  }
+}
+function drawLanternGlow(now) {
+  if (!LANTERNS.length) return;
+  const t = now / 1000;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const l of LANTERNS) {
+    if (!inView(l.x, l.y, 40) || fogHides(l, false)) continue;
+    const a = 0.32 + 0.08 * Math.sin(t * 3.1 + l.ph) + 0.05 * Math.sin(t * 7.3 + l.ph * 2);
+    ctx.globalAlpha = a; const s = 46; ctx.drawImage(SPR.glow, l.x - s / 2, l.y - s / 2, s, s);
+  }
+  ctx.restore();
 }
 function applyPatina(g) {
   g.save();
@@ -4730,7 +4780,7 @@ function drawVillage(g, h, x, y) {
   spots.sort((a, b) => a[1] - b[1]);
   spots.forEach(([bx, by], i) => {
     const k = hash(h.c, h.r, 200 + i);
-    if (STYLE === 'sonne') { minka(g, bx, by + 4, 0.85 + hash(h.c, h.r, 210 + i) * 0.2, k); return; }
+    if (STYLE === 'sonne') { minka(g, bx, by + 4, 1.05 + hash(h.c, h.r, 210 + i) * 0.25, k); return; }
     if (k < 0.18) stable(g, bx, by + 4, 0.85);
     else if (k < 0.32) stoneHouse(g, bx, by + 4, 0.9);
     else woodHouse(g, bx, by + 4, 0.85 + hash(h.c, h.r, 210 + i) * 0.2, hash(h.c, h.r, 220 + i));
@@ -6965,6 +7015,7 @@ function render(now) {
   drawAmbientUnder(now);
   for (const sec of S.secrets) { const sp = center(sec.c, sec.r); if (inView(sp.x, sp.y)) drawSecret(sec, now); }
   updateVision(); drawFog();
+  drawLanternGlow(now);
   if (S.mission.goal) {
     const G = S.mission.goal, gp = center(G.c, G.r), pl = 0.5 + 0.5 * Math.sin(now / 300);
     hexPath(ctx, gp.x, gp.y, R - 3); ctx.setLineDash([7, 5]); ctx.lineWidth = 3; ctx.strokeStyle = `rgba(255,226,122,${0.5 + 0.5 * pl})`; ctx.stroke(); ctx.setLineDash([]);
