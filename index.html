@@ -192,7 +192,10 @@
   .catline{font-size:.8em;margin-top:2px;opacity:.9}.catb{display:inline-block;width:16px;height:16px;line-height:16px;border-radius:50%;text-align:center;color:#fff;font-size:10px;font-weight:bold;vertical-align:middle;margin-right:3px}.cattxt{margin-top:4px}
   .cattab td{padding:2px 6px 2px 0;vertical-align:top}
   img.finale.portrait.title{max-height:50vh;max-width:86%}
-  .story .camps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+  .story .camps{display:flex;gap:12px;margin-top:6px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+  .story .camps>.camp{flex:0 0 calc(50% - 6px);scroll-snap-align:start}
+  body.phone .story .camps>.camp{flex:0 0 82%}
+  .story .swipe{text-align:center;font-size:.85em;opacity:.75;margin:2px 0 0}
   .story .camp{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s}
   .story .camp:hover{border-color:var(--gold);transform:translateY(-2px)}
   .story .camp img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;object-position:center 62%}
@@ -2804,7 +2807,7 @@ const CAMPAIGNS = {
   eldmark: { key: 'eldmark-kampagne-v1', title: 'Die Befreiung der Eldmark', tag: 'Zephyrus gegen die Aschhorde. Fünf Schlachten.', hero: 'Zephyrus', heroType: 'held', he: true,
     start: ['held', 'miliz', 'miliz', 'miliz', 'bogen'], faction: ['Wächter von Eldmark', 'Aschhorde'], boss: 'aschfuerst', missions: ELDMARK_MISSIONS, done: true, icon: '⚔',
     img: () => TITLE_IMG, blurb: 'Die Aschhorde hat die Eldmark überrannt. Von einem kleinen Dorf aus beginnt der Widerstand, über die Nebelhügel und den Flüsterwald bis vor die Mauern der Hauptstadt Eldor.' },
-  sonne: { beta: true, key: 'rote-sonne-kampagne-v1', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
+  sonne: { beta: true, foeTurn: 'Die Seelenlosen ziehen …', key: 'rote-sonne-kampagne-v1', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
     start: ['kokoro', 'reisbauer', 'reisbauer', 'reisbauer', 'yumi'], faction: ['Kokoros Gefährten', 'Die Seelenlosen'], boss: 'jade', missions: SONNE_MISSIONS, done: false, icon: '☀',
     img: () => sonneTitleImg(), blurb: 'Einmal im Jahr holen die Seelenlosen alle, die vierzig oder älter sind. Niemand kehrt zurück. Doch in diesem Jahr stellt sich ihnen ein Mädchen aus dem Dorf Kirisato entgegen.' }
 };
@@ -2970,7 +2973,7 @@ function showCampaigns() {
     try { const st = JSON.parse(localStorage.getItem(c.key)); if (st && st.roster) prog = st.mission >= c.missions.length ? (c.done ? 'Gewonnen 🏆' : 'Alle bisherigen Missionen geschafft ✔') : `Mission ${st.mission + 1} von ${c.missions.length}`; } catch (e) {}
     return `<div class="camp" data-id="${id}"><img src="${c.img()}" alt=""><div><b>${c.title}${c.beta ? ' <span class="beta">Beta</span>' : ''}</b><small>${c.tag}</small><span class="prog">${prog}</span></div></div>`;
   }).join('');
-  showStory('Kampagnen', 'Wähle deine Kampagne', `<div class="camps">${cards}</div>`,
+  showStory('Kampagnen', 'Wähle deine Kampagne', `<div class="camps">${cards}</div><p class="swipe">❦ Nach links und rechts wischen, um alle Kampagnen zu sehen ❦</p>`,
     [{ label: 'Lehrstunde (Tutorial)', fn: startTutorial }, { label: 'Freies Gefecht', fn: startSkirmish }, { label: 'Anleitung', fn: () => { help.classList.remove('hidden'); help.dataset.back = '1'; } }]);
   document.querySelectorAll('.camp').forEach(el => { el.onclick = () => { useCampaign(el.dataset.id); showMenu(); }; });
 }
@@ -3342,7 +3345,7 @@ async function endTurn() {
   finishSide(0);
   S.phase = 'ai'; S.busy = true; updateUI();
   startSide(1);
-  showBanner('Die Aschhorde zieht …', `Runde ${S.turn}`, true);
+  showBanner(CUR.foeTurn || 'Die Aschhorde zieht …', `Runde ${S.turn}`, true);
   await sleep(1100);
   const order = alive(1).sort((a, b) => TYPES[b.type].rng - TYPES[a.type].rng);
   for (const u of order) {
