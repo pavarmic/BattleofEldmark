@@ -201,6 +201,7 @@
   .story .camp small{display:block;color:var(--muted)}
   .story .camp .prog{display:block;font-size:13px;margin-top:4px;color:#e8dcc0}
   body.phone .story .camps{gap:8px}
+  .beta{display:inline-block;vertical-align:middle;font:bold 11px/1 Georgia,serif;letter-spacing:1px;text-transform:uppercase;color:#fff;background:#b8322a;border-radius:10px;padding:3px 7px 2px;margin-left:4px}
   body.phone .story .camp b{font-size:15px}
 </style>
 </head>
@@ -2765,10 +2766,10 @@ const SONNE_MISSIONS = [
    "ffffhh......d...ffff",
    "fff.h......d...hhfff",
    "ff.........d......hf",
-   "f...RRR...d...RRR..f",
-   "wwwwwwwwwwbwwwwwuwww",
-   "...RRRR...d...RRRR..",
-   "..RRRRR....d..RRRR.h",
+   "f.RR..www.d...RRR..w",
+   "...wwwwR.wbww...uwww",
+   "wwwRRRR...d.wwww.R..",
+   "..RRRR.....dRRRRR..h",
    "f..........d......hh",
    "ff..v.v.....ddvdv..f",
    "f...vv..ddddd..vv..f",
@@ -2777,6 +2778,7 @@ const SONNE_MISSIONS = [
    "ffff...h..d...h.ffff",
    "fffff.....d....fffff"
   ],
+  river: [[0, 5], [1, 5], [2, 5], [3, 4], [4, 4], [5, 4], [6, 4], [6, 3], [7, 3], [8, 3], [9, 4], [10, 4], [11, 4], [12, 4], [12, 5], [13, 5], [14, 5], [15, 5], [16, 4], [17, 4], [18, 4], [19, 4]],
   trails: [
    [[12, 0], [11, 1], [11, 2], [10, 3], [10, 4], [10, 5], [11, 6], [11, 7], [12, 8], [11, 9], [11, 10], [10, 11], [10, 12], [10, 13]],
    [[4, 9], [5, 9], [6, 10], [7, 10], [8, 10], [8, 9], [9, 9], [10, 9], [11, 9], [12, 9], [13, 8], [14, 8], [15, 8], [15, 9]]
@@ -2802,7 +2804,7 @@ const CAMPAIGNS = {
   eldmark: { key: 'eldmark-kampagne-v1', title: 'Die Befreiung der Eldmark', tag: 'Zephyrus gegen die Aschhorde. Fünf Schlachten.', hero: 'Zephyrus', heroType: 'held', he: true,
     start: ['held', 'miliz', 'miliz', 'miliz', 'bogen'], faction: ['Wächter von Eldmark', 'Aschhorde'], boss: 'aschfuerst', missions: ELDMARK_MISSIONS, done: true, icon: '⚔',
     img: () => TITLE_IMG, blurb: 'Die Aschhorde hat die Eldmark überrannt. Von einem kleinen Dorf aus beginnt der Widerstand, über die Nebelhügel und den Flüsterwald bis vor die Mauern der Hauptstadt Eldor.' },
-  sonne: { key: 'rote-sonne-kampagne-v1', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
+  sonne: { beta: true, key: 'rote-sonne-kampagne-v1', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
     start: ['kokoro', 'reisbauer', 'reisbauer', 'reisbauer', 'yumi'], faction: ['Kokoros Gefährten', 'Die Seelenlosen'], boss: 'jade', missions: SONNE_MISSIONS, done: false, icon: '☀',
     img: () => sonneTitleImg(), blurb: 'Einmal im Jahr holen die Seelenlosen alle, die vierzig oder älter sind. Niemand kehrt zurück. Doch in diesem Jahr stellt sich ihnen ein Mädchen aus dem Dorf Kirisato entgegen.' }
 };
@@ -2812,7 +2814,7 @@ function useCampaign(id) {
   CAMP_KEY = CUR.key; HERO_NAME = CUR.hero; MISSIONS = CUR.missions; FACTION = CUR.faction;
   CAMP = null; try { const c = JSON.parse(localStorage.getItem(CAMP_KEY)); if (c && c.roster) CAMP = c; } catch (e) {}
   try { localStorage.setItem(PICK_KEY, CUR_ID); } catch (e) {}
-  document.querySelector('header h1').textContent = CUR.icon + ' ' + CUR.title;
+  document.querySelector('header h1').innerHTML = CUR.icon + ' ' + CUR.title + (CUR.beta ? ' <span class="beta">Beta</span>' : '');
 }
 useCampaign((() => { try { return localStorage.getItem(PICK_KEY); } catch (e) { return null; } })());
 function saveCamp() { try { localStorage.setItem(CAMP_KEY, JSON.stringify(CAMP)); } catch (e) {} }
@@ -2838,9 +2840,9 @@ function makeSecretsFor(spots, fixed) {
   shuffle(deck);
   return spots.map((sp, i) => ({ ...sp, outcome: deck[i % deck.length], explored: false }));
 }
-let STYLE = 'eldmark';
+let STYLE = 'eldmark', MAP_RIVER = null;
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark';
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null;
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false,
@@ -2966,7 +2968,7 @@ function showCampaigns() {
   const cards = Object.entries(CAMPAIGNS).map(([id, c]) => {
     let prog = 'Noch nicht begonnen';
     try { const st = JSON.parse(localStorage.getItem(c.key)); if (st && st.roster) prog = st.mission >= c.missions.length ? (c.done ? 'Gewonnen 🏆' : 'Alle bisherigen Missionen geschafft ✔') : `Mission ${st.mission + 1} von ${c.missions.length}`; } catch (e) {}
-    return `<div class="camp" data-id="${id}"><img src="${c.img()}" alt=""><div><b>${c.title}</b><small>${c.tag}</small><span class="prog">${prog}</span></div></div>`;
+    return `<div class="camp" data-id="${id}"><img src="${c.img()}" alt=""><div><b>${c.title}${c.beta ? ' <span class="beta">Beta</span>' : ''}</b><small>${c.tag}</small><span class="prog">${prog}</span></div></div>`;
   }).join('');
   showStory('Kampagnen', 'Wähle deine Kampagne', `<div class="camps">${cards}</div>`,
     [{ label: 'Lehrstunde (Tutorial)', fn: startTutorial }, { label: 'Freies Gefecht', fn: startSkirmish }, { label: 'Anleitung', fn: () => { help.classList.remove('hidden'); help.dataset.back = '1'; } }]);
@@ -2990,7 +2992,7 @@ function showMenu() {
   btns.push({ label: 'Anleitung', fn: () => { help.classList.remove('hidden'); help.dataset.back = '1'; } });
   btns.push({ label: '‹ Alle Kampagnen', fn: showCampaigns });
   const won = CAMP && CAMP.mission >= MISSIONS.length;
-  showStory('Kampagne', CUR.title,
+  showStory(CUR.beta ? 'Kampagne · Beta-Version, wird noch gebaut' : 'Kampagne', CUR.title + (CUR.beta ? ' <span class="beta">Beta</span>' : ''),
     `<img class="finale portrait title" src="${CUR.img()}" alt="${CUR.title}"><p>${CUR.blurb}</p>
      <ol class="missions">${list}</ol><p style="font-size:.85em;opacity:.8;margin-top:4px">❦ Tippe auf eine Mission, um sie direkt zu spielen.</p>${won ? (eld ? `<img class="finale" src="${FINALE_IMG}" alt=""><p><b>Du hast die Kampagne gewonnen!</b> 🏆</p>` : `<p><b>Alle bisherigen Missionen geschafft!</b> Die Geschichte von ${HERO_NAME} geht bald weiter.</p>`) : ''}`, btns);
   document.querySelectorAll('ol.missions li').forEach((li, i) => {
@@ -3630,13 +3632,25 @@ function buildTerrain() {
     }
     g.restore();
   }
+  // 2b) Kanal als geschwungenes Band (Land der roten Sonne)
+  if (MAP_RIVER) {
+    for (const [c, r] of MAP_RIVER) { const p = center(c, r), v = landNoise(p.x, p.y) * 9, b0 = groundOf('.'); hexPath(g, p.x, p.y, R + 0.8); g.fillStyle = rgb([b0[0] + v, b0[1] + v, b0[2] + v * 0.6]); g.fill(); }
+    let pts = MAP_RIVER.map(([c, r]) => { const p = center(c, r); return [p.x, p.y]; });
+    const ext = (a, b) => [a[0] + (a[0] - b[0]) * 1.4, a[1] + (a[1] - b[1]) * 1.4];
+    pts.unshift(ext(pts[0], pts[1])); pts.push(ext(pts[pts.length - 1], pts[pts.length - 2]));
+    for (let it = 0; it < 3; it++) { const q = [pts[0]]; for (let i = 0; i < pts.length - 1; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1]; q.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]); } q.push(pts[pts.length - 1]); pts = q; }
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    for (const [w, col] of [[R * 2.0, 'rgba(206,196,150,0.95)'], [R * 1.72, '#4a86aa'], [R * 1.4, '#5a9cc0'], [R * 0.7, 'rgba(160,210,230,0.45)'], [R * 0.18, 'rgba(225,242,255,0.5)']]) {
+      g.strokeStyle = col; g.lineWidth = w; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+    }
+  }
   // 3) Bodendetails (im Feld)
   for (const h of hexes) {
     const { x, y } = center(h.c, h.r);
     g.save(); hexPath(g, x, y, R + 0.6); g.clip();
     groundDeco(g, h, x, y);
     drawFieldGround(g, h, x, y);
-    if ('ubsxmtk'.includes(h.t)) drawDeco(g, h, x, y);
+    if ('ubsxmtk'.includes(h.t) && !(MAP_RIVER && 'ub'.includes(h.t))) drawDeco(g, h, x, y);
     eldorGround(g, h, x, y);
     if (h.t === 'a') brookDeco(g, h, x, y);
     if (h.t === 'i') pondDeco(g, h, x, y);
@@ -3692,7 +3706,8 @@ function buildTerrain() {
       if (edge(tr[0])) pts.unshift([pts[0][0] + edge(tr[0]) * R * 1.4, pts[0][1]]);
       if (edge(tr[tr.length - 1])) pts.push([pts[pts.length - 1][0] + edge(tr[tr.length - 1]) * R * 1.4, pts[pts.length - 1][1]]);
       if (STYLE === 'sonne') { // Wege in Japan: leicht geschlängelt, oben und unten bis über den Kartenrand
-        pts = pts.map(([px, py], i) => i === 0 || i === pts.length - 1 ? [px, py] : [px + (hash(px | 0, py | 0, 41) - 0.5) * R * 0.5, py + (hash(px | 0, py | 0, 42) - 0.5) * R * 0.3]);
+        const off = pts.length - tr.length, onBridge = i => { const t = tr[i - off]; return t && 'bu'.includes(terr(t[0], t[1])); };
+        pts = pts.map(([px, py], i) => i === 0 || i === pts.length - 1 || onBridge(i) ? [px, py] : [px + (hash(px | 0, py | 0, 41) - 0.5) * R * 0.5, py + (hash(px | 0, py | 0, 42) - 0.5) * R * 0.3]);
         if (tr[0][1] === 0) pts.unshift([pts[0][0], pts[0][1] - R * 1.4]);
         if (tr[tr.length - 1][1] === ROWS - 1) pts.push([pts[pts.length - 1][0], pts[pts.length - 1][1] + R * 1.4]);
       }
@@ -3704,6 +3719,21 @@ function buildTerrain() {
     for (const pts of chains) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts) g.lineTo(p[0], p[1]); g.stroke(); }
     for (const sg of segs) { g.beginPath(); g.moveTo(sg[0], sg[1]); g.lineTo(sg[2], sg[3]); g.stroke(); }
   }
+  // 4a) Holzbrücken über den Kanal genau dort, wo der Weg das Wasser kreuzt
+  if (MAP_RIVER) for (const h of hexes) {
+    if (h.t !== 'b') continue;
+    const c0 = center(h.c, h.r); let best = null, bd = 1e9;
+    for (const pts of chains) for (let i = 1; i < pts.length - 1; i++) { const d = (pts[i][0] - c0.x) ** 2 + (pts[i][1] - c0.y) ** 2; if (d < bd) { bd = d; best = [pts, i]; } }
+    if (!best) continue;
+    const [pts, i] = best, a = Math.atan2(pts[i + 1][1] - pts[i - 1][1], pts[i + 1][0] - pts[i - 1][0]);
+    g.save(); g.translate(pts[i][0], pts[i][1]); g.rotate(a);
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(-R * 1.05, -6, R * 2.1, 15);
+    for (let k = -R * 1.05; k < R * 1.05; k += 5) { g.fillStyle = Math.round(k / 5) % 2 ? '#9a6b3a' : '#a8784a'; g.fillRect(k, -8, 4.4, 16); g.strokeStyle = '#4a3018'; g.lineWidth = 0.7; g.strokeRect(k, -8, 4.4, 16); }
+    g.fillStyle = '#b8322a'; g.fillRect(-R * 1.05, -10, R * 2.1, 2.6); g.fillRect(-R * 1.05, 7.4, R * 2.1, 2.6);
+    for (const k of [-R * 0.9, 0, R * 0.9]) for (const yy of [-11, 7]) { g.fillStyle = '#7a1e18'; g.fillRect(k - 1.5, yy - 1, 3, 4.6); }
+    g.restore();
+  }
+  for (const h of hexes) if (h.t === 'u' && MAP_RIVER) { const c0 = center(h.c, h.r); fordStones(g, h, c0.x, c0.y); }
   // 4b) Bach als geglättete Linie
   const brook = hexes.filter(b => b.t === 'a').sort((a, b) => a.r - b.r || a.c - b.c);
   if (brook.length) {
@@ -6610,6 +6640,15 @@ function felsen(g, h, x, y) {
     g.beginPath(); g.moveTo(bx - s, by); g.quadraticCurveTo(bx - s * 0.9, by - s * 1.1, bx - s * 0.1, by - s * 1.05); g.quadraticCurveTo(bx + s * 0.9, by - s * 0.8, bx + s, by); g.closePath();
     g.fillStyle = grad(g, bx - s, by - s, bx + s, by, '#f0f2ee', '#9aa29e'); g.fill(); g.lineWidth = 0.6; g.strokeStyle = 'rgba(60,66,64,0.6)'; g.stroke();
     g.fillStyle = 'rgba(96,170,138,0.6)'; g.beginPath(); g.ellipse(bx - s * 0.3, by - s * 0.15, s * 0.45, s * 0.18, 0, 0, 7); g.fill();
+  }
+}
+function fordStones(g, h, x, y) {
+  const rn = n => hash(h.c, h.r, n);
+  for (let i = 0; i < 9; i++) {
+    const sx = x + (i - 4) * 4.5 + (rn(i) - 0.5) * 4, sy = y + (rn(i + 7) - 0.5) * R * 1.3, rr = 3 + rn(i + 3) * 1.8;
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(sx + 1, sy + 1.5, rr, rr * 0.7, 0, 0, 7); g.fill();
+    g.fillStyle = i % 2 ? '#d4d6d0' : '#b8bcb6'; g.beginPath(); g.ellipse(sx, sy, rr, rr * 0.7, 0, 0, 7); g.fill();
+    g.strokeStyle = '#6a706c'; g.lineWidth = 0.8; g.stroke();
   }
 }
 function torii(g, x, y, explored) {
