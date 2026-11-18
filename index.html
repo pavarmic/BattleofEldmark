@@ -405,12 +405,20 @@ const TYPES = {
              desc: 'Bauer aus den Reisfeldern mit Bambusspeer und Strohhut. Schwach, aber mutig. Im Reisfeld kommt er so leicht voran wie auf der Wiese.' },
   yumi:    { name: 'Bogenschützin', icon: '🏹', hp: 20, atk: 6, def: 2, mv: 3, rng: 3, counter: 0.5, hill: true, art: 'Die',
              desc: 'Schützin mit dem langen Schreinbogen. Fernkampf bis 3 Felder, auf Hügeln +2 Angriff.' },
-  holz:    { name: 'Holzkrieger', icon: '🪵', hp: 22, atk: 6, def: 2, mv: 4, rng: 1, counter: 0.7,
-             desc: 'Ein Seelenloser aus dunklem Holz: schnell und leise, aber nicht sehr zäh. Statt eines Gesichts trägt er eine glatte Maske.' },
-  stein:   { name: 'Steinkrieger', icon: '🗿', hp: 36, atk: 8, def: 6, mv: 2, rng: 1, counter: 1.0,
-             desc: 'Ein Seelenloser aus grauem Stein: langsam, aber kaum zu verwunden. Schlägt mit voller Kraft zurück.' },
-  jade:    { name: 'Jadekrieger', icon: '💠', hp: 26, atk: 9, def: 3, mv: 3, rng: 2, counter: 0.5, magic: true, bolt: '#7dffc4',
-             desc: 'Ein seltener Seelenloser aus grüner Jade. Zwischen seinen Händen leuchtet kaltes Licht, das er 2 Felder weit schleudert. Ignoriert Geländeschutz und halbe Rüstung.' }
+  holz:    { name: 'Holzkrieger', icon: '🪵', hp: 22, atk: 6, def: 2, mv: 4, rng: 1, counter: 0.7, wood: true,
+             desc: 'Ein Seelenloser aus dunklem Holz: schnell und leise, aber nicht sehr zäh. Statt eines Gesichts trägt er eine glatte Maske. Holz brennt: Brandpfeile setzen ihn in Flammen.' },
+  stein:   { name: 'Steinkrieger', icon: '🗿', hp: 36, atk: 8, def: 6, mv: 2, rng: 1, counter: 1.0, stone: true,
+             desc: 'Ein Seelenloser aus grauem Stein: langsam, aber kaum zu verwunden. Pfeile prallen fast wirkungslos ab. Netze machen ihn noch langsamer, Spitzhacken zertrümmern ihn.' },
+  honoo:   { name: 'Honoo', icon: '🔥', hp: 22, atk: 7, def: 2, mv: 3, rng: 3, counter: 0.5, hill: true, fire: true, art: 'Die',
+             desc: 'Kokoros Freundin. Ihr Name heißt „Flamme“. Schießt Brandpfeile bis 3 Felder weit: Holzkrieger fangen Feuer, nehmen +3 Schaden und brennen 3 Runden lang weiter (4 Schaden pro Runde). Gegen Stein prallen ihre Pfeile ab.' },
+  tamashi: { name: 'Tamashi', icon: '🏮', hp: 26, atk: 3, def: 1, mv: 0, rng: 1, counter: 0.4, protect: true, art: 'Die',
+             desc: 'Kokoros Mutter. Dieses Jahr ist sie an der Reihe. Sie bleibt in ihrem Haus und wartet. Wird Tamashi geholt, ist die Mission verloren!' },
+  netzbauer: { name: 'Bauer mit Netz', icon: '🕸️', hp: 24, atk: 6, def: 2, mv: 4, rng: 1, counter: 0.7, net: true, pick: true,
+             desc: 'Flinker Bauer aus Kirisato mit Fischernetz und Spitzhacke. Sein Netz macht Gegner langsamer (zwei Netze halten einen Steinkrieger fast fest). Mit der Spitzhacke +5 Angriff gegen Stein.' },
+  jade:    { name: 'Jadekrieger', icon: '💠', hp: 30, atk: 7, def: 3, mv: 3, rng: 2, counter: 0.4, magic: true, bolt: '#7dffc4', jadeSkin: true,
+             desc: 'Ein leuchtender Seelenloser aus grüner Jade, geboren aus grünem Nebel. Schleudert grüne Blitze 2 Felder weit, die Häuser in Brand setzen. Gewöhnliche Waffen prallen an ihm ab. Nur eine kristallklare Klinge kann ihn brechen.' },
+  tamashi_k: { name: 'Tamashi', icon: '🗡️', hp: 26, atk: 8, def: 2, mv: 3, rng: 1, counter: 0.6, protect: true, crystal: true, art: 'Die',
+             desc: 'Kokoros Mutter mit dem Schwert mit der kristallklaren Klinge. Nur dieses Schwert durchdringt Jade. Wird Tamashi geholt, ist die Mission verloren!' }
 };
 const LEVELS = [0, 15, 40, 75];
 
@@ -563,6 +571,8 @@ function trigReady(T) {
   if (T.after && !(T.after in S.fired)) return false;
   if (T.cleared) return !alive(1).length;
   if (T.turn && S.turn >= (T.after ? S.fired[T.after] + T.turn : T.turn)) return true;
+  if (T.typeGone && !alive(1).some(u => u.type === T.typeGone)) return true;
+  if (T.foeNear && alive(1).some(u => !u.dormant && (!T.foeType || u.type === T.foeType) && hexDist(u.c, u.r, T.foeNear[0], T.foeNear[1]) <= T.foeNear[2])) return true;
   const ps = alive(0);
   if (T.near && ps.some(u => !u.wild && hexDist(u.c, u.r, T.near[0], T.near[1]) <= (T.d ?? 1) && (!T.armyNear || u.army))) return true;
   if (T.west !== undefined && ps.some(u => u.c <= T.west && (!T.armyWest || u.army))) return true;
@@ -584,17 +594,23 @@ async function runTriggers() {
     for (const [t, c, r, flag] of T.spawn || []) {
       const sp = unitAt(c, r) || !isFinite(TER[terr(c, r)].cost) ? freeNear(c, r) : [c, r]; if (!sp) continue;
       const u = addUnit(t, 1, sp[0], sp[1]); u.post = sp; foeVet(u, S.mission); u.moved = u.acted = true;
-      if (flag === 'guard') u.guard = true; if (flag === 'wait') u.waitR = 3;
+      if (flag === 'guard') u.guard = true; if (flag === 'wait') u.waitR = 3; if (flag === 'dormant') u.dormant = true;
       fxText(u, T.shout || 'Aaarh!', '#ffb0a8'); first = first || u;
     }
     if (T.wake) for (const e of alive(1)) e.waitR = 0;
+    if (T.crystal) for (const u of alive(0)) if (u.type === 'tamashi') { u.type = 'tamashi_k'; u.spr = null; fxText(u, 'Kristallschwert!', '#c8f4ff'); first = first || u; }
+    if (T.awaken) for (const e of alive(1)) if (e.dormant) { e.dormant = false; fxText(e, T.shout || '…', '#d8d4cc'); first = first || e; }
+    for (const [t, c, r] of T.allies || []) {
+      const sp = unitAt(c, r) ? freeNear(c, r) : [c, r]; if (!sp) continue;
+      const u = addUnit(t, 0, sp[0], sp[1]); fxText(u, 'Zu Hilfe!', '#9cff9c'); first = first || u;
+    }
     if (T.sanctuary) S.sanctuary = T.sanctuary;
     if (T.reveal) { const [rc, rr, rd] = T.reveal; S.scouted = S.scouted || new Set(); for (const hx of HEX.values()) if (hexDist(rc, rr, hx.c, hx.r) <= rd) S.scouted.add(K(hx.c, hx.r)); S.fogSig = ''; updateVision(); }
     if (T.heal) for (const u of alive(0)) if (hexDist(u.c, u.r, T.near[0], T.near[1]) <= T.heal) { u.hp = maxHp(u); fxText(u, 'Erholt!', '#9cff9c'); }
     if (T.look) ensureVisible(T.look[0], T.look[1]); else if (first) ensureVisible(first.c, first.r);
     log(T.log || T.title, T.spawn ? 'e' : 's');
     updateUI();
-    await showEvent(T.place, T.title, (T.id === 'einsiedler' ? `<img class="finale portrait tall" src="${EINSIEDLER_IMG}" alt="Der alte Einsiedler">` : '') + heroText(T.text), T.img ? { type: T.img, side: T.imgSide || 0 } : null, T.spawn ? 'monster' : 'ally', true);
+    await showEvent(T.place, T.title, (T.id === 'einsiedler' ? `<img class="finale portrait tall" src="${EINSIEDLER_IMG}" alt="Der alte Einsiedler">` : '') + heroText(T.text), T.img ? { type: T.img, side: T.imgSide || 0 } : null, T.spawn || T.danger ? 'monster' : 'ally', true);
   }
 }
 async function reinforce(R) {
@@ -2766,40 +2782,53 @@ const SONNE_MISSIONS = [
   id: 's1', style: 'sonne',
   title: 'Kirisato', sub: 'Die Nacht der Laternen',
   map: [
-   "ffffhh......d...ffff",
-   "fff.h......d...hhfff",
-   "ff.........d......hf",
-   "f.RR..www.d...RRR..w",
-   "...wwwwR.wbww...uwww",
-   "wwwRRRR...d.wwww.R..",
-   "..RRRR.....dRRRRR..h",
-   "f..........d......hh",
-   "ff..v.v.....ddvdv..f",
-   "f...vv..ddddd..vv..f",
-   "ff...vddd..d...v..ff",
-   "fff.......d......fff",
-   "ffff...h..d...h.ffff",
-   "fffff.....d....fffff"
+   "hhhf.hfh.dhh.hhffh",
+   "fh......d.......hh",
+   "h.f.....d......www",
+   "fh......d..wwww.hf",
+   "h......wbwww.....h",
+   "wuwwwww.d......fff",
+   "wh.......d......hh",
+   "h.f.RR..d...RR...h",
+   "fh.R..v.d.v...R.hf",
+   "h....v..d..v.....h",
+   "hf....v.vdv....fff",
+   "fh..R..vdv..RR..hh",
+   "h.f.R....d...R...h",
+   "fh......d.......hf"
   ],
-  river: [[0, 5], [1, 5], [2, 5], [3, 4], [4, 4], [5, 4], [6, 4], [6, 3], [7, 3], [8, 3], [9, 4], [10, 4], [11, 4], [12, 4], [12, 5], [13, 5], [14, 5], [15, 5], [16, 4], [17, 4], [18, 4], [19, 4]],
-  trails: [
-   [[12, 0], [11, 1], [11, 2], [10, 3], [10, 4], [10, 5], [11, 6], [11, 7], [12, 8], [11, 9], [11, 10], [10, 11], [10, 12], [10, 13]],
-   [[4, 9], [5, 9], [6, 10], [7, 10], [8, 10], [8, 9], [9, 9], [10, 9], [11, 9], [12, 9], [13, 8], [14, 8], [15, 8], [15, 9]]
-  ],
-  slots: [[11, 11], [10, 11], [12, 11], [10, 12], [12, 12], [11, 12], [9, 11], [13, 11], [9, 12], [13, 12], [11, 13], [10, 13]],
-  join: [],
-  enemy: [['holz', 6, 1], ['holz', 13, 2], ['holz', 3, 2], ['stein', 10, 1], ['stein', 15, 2], ['jade', 11, 0, 'guard']],
-  secrets: [{ c: 19, r: 7, name: 'Bergschrein', kind: 'schrein' }, { c: 1, r: 7, name: 'Fuchsschrein', kind: 'schrein' }],
-  secretDeck: [
-   { kind: 'ally', unit: 'yumi', text: 'Hinter dem Schrein hat sich eine junge Schützin versteckt. Als sie {HERO} erkennt, spannt sie ihren langen Bogen: „Letztes Jahr haben sie meinen Vater geholt. Ich komme mit!“' },
-   { kind: 'leer', text: 'Nur verwelkte Kirschblüten und ein paar Reiskörner als Opfergabe. Der Schrein ist still.' }
+  river: [[17, 2], [16, 2], [15, 2], [14, 3], [13, 3], [12, 3], [11, 3], [11, 4], [10, 4], [9, 4], [8, 4], [7, 4], [6, 5], [5, 5], [4, 5], [3, 5], [2, 5], [1, 5], [0, 5], [0, 6]],
+  trails: [[[9, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [9, 6], [8, 7], [8, 8], [8, 9], [9, 10], [8, 11], [9, 12], [8, 13]]],
+  slots: [[8, 9], [9, 9], [7, 9], [9, 8], [7, 10], [9, 11], [7, 8], [10, 9], [6, 9], [8, 12], [7, 12], [10, 11]],
+  joinUnits: ['tamashi'], join: [[8, 10]],
+  enemy: [['holz', 5, 1], ['holz', 10, 1], ['holz', 13, 1], ['stein', 7, 3, 'dormant'], ['stein', 9, 3, 'dormant']],
+  secrets: [],
+  triggers: [
+   { id: 'steine', typeGone: 'holz', awaken: true, danger: true, shout: 'Knirsch …', look: [8, 3], img: 'stein', imgSide: 1,
+     place: 'Am Fluss', title: 'Die Steinkrieger erwachen',
+     log: 'Jenseits des Flusses erwachen zwei Steinkrieger!',
+     text: 'Jenseits des Flusses standen zwei Steinkrieger, kalt und hart, als stünden sie schon immer dort. Jetzt spiegeln sich die Flammen in ihren glatten Gesichtern. Ein Knirschen geht durch den Stein. Langsam, Schritt für Schritt, marschieren sie auf das Dorf zu.<br><br>Die beiden Mädchen haben Angst. Kalte Angst.<br><small>Pfeile prallen von Stein fast wirkungslos ab.</small>' },
+   { id: 'bauern', after: 'steine', foeNear: [8, 6, 3], foeType: 'stein', turn: 2, img: 'netzbauer', look: [8, 8],
+     place: 'Kirisato', title: 'Die Türen gehen auf!',
+     log: 'Zwei Bauern mit Netzen und Spitzhacken eilen zu Hilfe!',
+     text: 'Auf halbem Weg fliegen links und rechts zwei Türen auf. Zwei Bauern stürmen heraus, mit Fischernetzen und Spitzhacken: „Lasst die Mädchen nicht allein kämpfen!“<br><br><small>Ein Netz macht einen Steinkrieger langsamer, ein zweites hält ihn fast fest. Spitzhacken zertrümmern Stein (+5 Angriff).</small>',
+     allies: [['netzbauer', 6, 8], ['netzbauer', 10, 8]] },
+   { id: 'jade', after: 'steine', typeGone: 'stein', spawn: [['jade', 8, 1, 'dormant']], shout: '…', img: 'jade', imgSide: 1, look: [8, 3],
+     place: 'Am Fluss', title: 'Grüner Nebel',
+     log: 'Aus grünem Nebel bildet sich ein Jadekrieger!',
+     text: 'Als die Steinkrieger nur noch Kiesel sind, blitzt ein helles Leuchten auf. Grüner Nebel kriecht über den Weg, und aus ihm formt sich ein <b>Jadekrieger</b>. Noch formt sich das leuchtende Wesen aus dem Nebel. Gleich wird es losmarschieren, mit grünen Blitzen, die Häuser in Brand setzen.<br><small>Gewöhnliche Waffen prallen an Jade ab!</small>' },
+   { id: 'kristall', after: 'jade', turn: 1, crystal: true, awaken: true, shout: 'Zzzt!', img: 'tamashi_k', look: [8, 10],
+     place: 'Tamashis Haus', title: 'Die kristallklare Klinge',
+     log: 'Tamashi greift zum Schwert mit der kristallklaren Klinge!',
+     text: 'Alle vier stürzen sich auf den Feind, doch ihre Waffen prallen ab. Der Jadekrieger marschiert los, grüne Blitze zucken aus seinem Schwert. Da öffnet sich die Tür von Tamashis Haus. Kokoros Mutter tritt heraus, in den Händen ein Schwert, dessen Klinge klar ist wie Kristall.<br><br><small>Tamashi kann sich jetzt bewegen. Nur ihr Kristallschwert durchdringt Jade. Aber pass auf sie auf!</small>' }
   ],
   goal: null, foeLvl: 0, foeUp: 0,
-  intro: 'Im Land der roten Sonne fürchten alle eine Nacht im Jahr: die <b>Nacht der Laternen</b>. Dann steigen die Seelenlosen aus dem Norden herab, Krieger aus Holz, Stein und Jade, stumm und ohne Gesicht. Sie holen jeden, der vierzig Jahre oder älter ist. Niemand kehrt je zurück.<br><br>Man flüstert, die Verschleppten würden selbst zu Seelenlosen. Und man flüstert von dem, der sie schickt: dem <b>Kalten König</b>.<br><br>In diesem Herbst wird Tamashi vierzig, Kokoros Mutter. Doch {HERO} hat die Naginata ihres Großvaters vom Dachbalken geholt. „Dieses Jahr nehmen sie niemanden mit. Nicht aus Kirisato.“',
-  goalText: 'Besiege alle Seelenlosen und beschütze Kirisato.',
-  outro: 'Der Jadekrieger zerspringt mit einem Klang wie eine Tempelglocke. Zwischen den Scherben liegt etwas Kleines: ein hölzerner Kamm mit eingeschnitzten Kranichen. Die alte Weberin Omitsu erkennt ihn sofort. Er gehörte ihrem Mann, den die Seelenlosen vor drei Jahren geholt haben.<br><br>Also ist etwas Wahres an den Gerüchten. Irgendwo im Norden, beim Kalten König, ist ein Rest der Verschleppten noch da.<br><br>Tamashi legt ihrer Tochter die Hand auf die Schulter. {HERO} blickt zu den Bergen. „Dann gehe ich sie holen.“ Eine Schützin vom Bergschrein und ein junger Reisbauer treten neben sie.',
-  reward: ['yumi', 'reisbauer']
+  intro: 'Kokoro wuchs in einem kleinen Tal mitten in den Bergen auf. Die Kirschen blühten, frisches Wasser floss in Bächen von den Hängen, und das Land war fruchtbar.<br><br>Doch über den Menschen lag ein trauriger Schatten. Tief in den Bergen, allein in seiner Festung, herrscht der <b>Kalte König</b>. Kein Lebender hat ihn je gesehen. Einmal im Jahr, in der <b>Nacht der Laternen</b>, schickt er seine Seelenlosen ins Tal. Sie holen die Alten, um ihre Seelen und Herzen zu stehlen. Wer geholt wird, kehrt nie zurück.<br><br>Seit Wochen sieht {HERO} jede Nacht dieselben Bilder: Krieger aus Holz, ohne Gesicht, vor der Tür ihrer Mutter Tamashi. Sie weiß: Dieses Jahr ist Tamashi an der Reihe.<br><br>Doch Kokoro ist ein Mensch mit Herz. Sie fügt sich nicht dem Schicksal. Ihre Freundin <b>Honoo</b> hat Bogen und Brandpfeile vorbereitet. Beide sind bereit zu sterben. Aber die Holzkrieger sollen brennen.',
+  goalText: 'Beschütze Tamashi und besiege alle Seelenlosen. Honoos Brandpfeile setzen Holzkrieger in Flammen.',
+  outro: 'Tamashi rammt die kristallklare Klinge in den Jadekrieger. Er zerspringt in tausend Splitter, und der grüne Nebel verweht. Im Dorf ist es still, nur die Laternen leuchten. Dann öffnet sich eine Tür nach der anderen, und die Nachbarn löschen die brennenden Häuser. Tamashi schließt ihre Tochter in die Arme.<br><br>Zum ersten Mal seit Menschengedenken hat Kirisato in der Nacht der Laternen niemanden verloren. Die beiden Bauern schultern ihre Spitzhacken: „Wohin du auch gehst, Kokoro, wir kommen mit.“',
+  reward: []
  }
+
 ];
 
 const NAME_KEY = 'eldmark-heldname', PICK_KEY = 'pocket-kampagne';
@@ -2807,9 +2836,9 @@ const CAMPAIGNS = {
   eldmark: { key: 'eldmark-kampagne-v1', title: 'Die Befreiung der Eldmark', tag: 'Zephyrus gegen die Aschhorde. Fünf Schlachten.', hero: 'Zephyrus', heroType: 'held', he: true,
     start: ['held', 'miliz', 'miliz', 'miliz', 'bogen'], faction: ['Wächter von Eldmark', 'Aschhorde'], boss: 'aschfuerst', missions: ELDMARK_MISSIONS, done: true, icon: '⚔',
     img: () => TITLE_IMG, blurb: 'Die Aschhorde hat die Eldmark überrannt. Von einem kleinen Dorf aus beginnt der Widerstand, über die Nebelhügel und den Flüsterwald bis vor die Mauern der Hauptstadt Eldor.' },
-  sonne: { beta: true, foeTurn: 'Die Seelenlosen ziehen …', key: 'rote-sonne-kampagne-v1', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
-    start: ['kokoro', 'reisbauer', 'reisbauer', 'reisbauer', 'yumi'], faction: ['Kokoros Gefährten', 'Die Seelenlosen'], boss: 'jade', missions: SONNE_MISSIONS, done: false, icon: '☀',
-    img: () => sonneTitleImg(), blurb: 'Einmal im Jahr holen die Seelenlosen alle, die vierzig oder älter sind. Niemand kehrt zurück. Doch in diesem Jahr stellt sich ihnen ein Mädchen aus dem Dorf Kirisato entgegen.' }
+  sonne: { beta: true, foeTurn: 'Die Seelenlosen ziehen …', key: 'rote-sonne-kampagne-v2', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
+    start: ['kokoro', 'honoo'], faction: ['Kokoros Gefährten', 'Die Seelenlosen'], boss: 'holz', missions: SONNE_MISSIONS, done: false, icon: '☀',
+    img: () => sonneTitleImg(), blurb: 'Einmal im Jahr, in der Nacht der Laternen, holen die Seelenlosen des Kalten Königs die Alten aus dem Tal. Niemand kehrt zurück. Doch in diesem Jahr stellt sich ihnen ein Mädchen mit Herz entgegen.' }
 };
 let CUR_ID = 'eldmark', CUR = CAMPAIGNS.eldmark, CAMP_KEY, HERO_NAME, MISSIONS, CAMP = null;
 function useCampaign(id) {
@@ -2870,7 +2899,7 @@ function setupBattle(M, roster) {
     roster.forEach((v, i) => { const sp = spotFor(i); if (!sp) return; taken.add(K(sp[0], sp[1])); const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = u.xp0 = v.xp; u.lvl = u.lvl0 = v.lvl; u.kills = u.k0 = v.kills || 0; u.hp = maxHp(u); });
     (M.joinUnits || []).forEach((t, i) => { const [c, r] = M.join[i]; addUnit(t, 0, c, r); });
     S.fired = {};
-    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r); if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; u.post = [c, r]; foeVet(u, M); }
+    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r); if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; u.post = [c, r]; foeVet(u, M); }
   }
   document.getElementById('log').innerHTML = '';
   document.getElementById('overlay').classList.add('hidden');
@@ -3035,7 +3064,7 @@ function missionResult(win) {
   }
   const i = MISSIONS.indexOf(M);
   if (win) {
-    const survivors = alive(0).filter(u => !u.wild).concat(S.reserve || []).sort((a, b) => (TYPES[b.type].hero ? 1 : 0) - (TYPES[a.type].hero ? 1 : 0));
+    const survivors = alive(0).filter(u => !u.wild && !TYPES[u.type].protect).concat(S.reserve || []).sort((a, b) => (TYPES[b.type].hero ? 1 : 0) - (TYPES[a.type].hero ? 1 : 0));
     const fallen = CAMP.startRoster.length + (M.joinUnits || []).length - survivors.filter(u => true).length;
     CAMP.roster = survivors.map(u => ({ type: u.type, xp: u.xp, lvl: u.lvl, kills: u.kills })).concat((M.reward || []).map(vet));
     CAMP.mission = i + 1; delete CAMP.startRoster; saveCamp();
@@ -3047,7 +3076,7 @@ function missionResult(win) {
   } else {
     const heroDead = !alive(0).some(u => TYPES[u.type].hero);
     showStory(`Mission ${i + 1}: ${M.title}`, 'Niederlage',
-      `<p>${heroDead ? `${HERO_NAME} ist gefallen … Ohne ${CUR.he ? 'seinen Anführer' : 'ihre Anführerin'} zerstreut sich der Widerstand.` : 'Dein Heer wurde geschlagen.'}</p><p>Doch noch ist nichts verloren. Versuch es noch einmal!</p>${battleStats()}`,
+      `<p>${S.units.some(u => u.side === 0 && TYPES[u.type].protect && u.hp <= 0) ? `Die Seelenlosen haben ${S.units.find(u => TYPES[u.type].protect).type === 'tamashi' ? 'Tamashi' : 'die Alten'} geholt … Ihr Herz und ihre Seele gehören nun dem Kalten König.` : heroDead ? `${HERO_NAME} ist gefallen … Ohne ${CUR.he ? 'seinen Anführer' : 'ihre Anführerin'} zerstreut sich der Widerstand.` : 'Dein Heer wurde geschlagen.'}</p><p>Doch noch ist nichts verloren. Versuch es noch einmal!</p>${battleStats()}`,
       [{ label: 'Mission wiederholen', main: true, fn: () => { CAMP.roster = CAMP.startRoster || CAMP.roster; startMission(i); } }, { label: 'Menü', fn: () => { CAMP.roster = CAMP.startRoster || CAMP.roster; saveCamp(); showMenu(); } }], { type: CUR.boss, side: 1 });
   }
 }
@@ -3070,7 +3099,7 @@ function inZoc(u, c, r) {
 }
 function reachable(u) {
   const T = TYPES[u.type], sk = K(u.c, u.r);
-  const res = new Map([[sk, { c: u.c, r: u.r, mp: T.mv, prev: null, steps: 0 }]]);
+  const res = new Map([[sk, { c: u.c, r: u.r, mp: Math.max(0, T.mv - (u.netted || 0)), prev: null, steps: 0 }]]);
   const open = [sk];
   while (open.length) {
     open.sort((a, b) => res.get(b).mp - res.get(a).mp);
@@ -3114,7 +3143,7 @@ const CATS = {
 };
 const CAT_OF = { held: 'anf', aschfuerst: 'anf', miliz: 'plaenk', dryade: 'plaenk', schild: 'schwer', zwerg: 'schwer', asche: 'schwer', schwarzork: 'schwer',
   bogen: 'bogen', dorn: 'bogen', hirsch: 'reiter', wolf: 'reiter', stern: 'magier', schatten: 'magier',
-  greif: 'flieger', katapult: 'belag', kokoro: 'anf', reisbauer: 'plaenk', yumi: 'bogen', holz: 'plaenk', stein: 'schwer', jade: 'magier', baer: 'monster', eiche: 'monster', troll: 'monster', gruft: 'monster', dunkelwolf: 'monster' };
+  greif: 'flieger', katapult: 'belag', kokoro: 'anf', honoo: 'bogen', tamashi: 'plaenk', tamashi_k: 'plaenk', netzbauer: 'plaenk', reisbauer: 'plaenk', yumi: 'bogen', holz: 'plaenk', stein: 'schwer', jade: 'magier', baer: 'monster', eiche: 'monster', troll: 'monster', gruft: 'monster', dunkelwolf: 'monster' };
 const catOf = type => CAT_OF[type] || 'schwer';
 // Nebel des Krieges: leichte Späher sehen weit, schwere Truppen kurz
 const SIGHT = { plaenk: 5, reiter: 5, flieger: 6, magier: 4, bogen: 4, anf: 4, schwer: 3, belag: 3, monster: 3 };
@@ -3169,12 +3198,17 @@ function calcDmg(att, ac, ar, def, dc, dr, opt = {}) {
   if (A.hill && terr(ac, ar) === 'h') atk += 2;
   if (!opt.counter && !A.hero && S.units.some(h => h.hp > 0 && h.side === att.side && TYPES[h.type].hero && hexDist(h.c, h.r, ac, ar) === 1)) atk += 1;
   const [cbA, cbD] = catBonus(att, def); atk += cbA;
+  if (A.pick && D.stone) atk += 5;
+  if (A.crystal && D.jadeSkin) atk += 22;
+  if (A.fire && D.wood) atk += 3;
   let d = D.def + def.lvl + cbD, tdef = TER[terr(dc, dr)].def;
   if (A.magic) { d = Math.floor(d / 2); tdef = 0; }
   if (A.siege) { if ('qnpN'.includes(terr(dc, dr))) atk += 4; tdef = 0; }
   const hp = opt.hp !== undefined ? opt.hp : att.hp;
   let dmg = (atk * 2 - d - tdef) * (0.55 + 0.45 * Math.max(0, hp) / maxHp(att));
   if (opt.counter) dmg *= A.counter;
+  if (catOf(att.type) === 'bogen' && D.stone) dmg *= 0.3; // Pfeile prallen von Stein ab
+  if (D.jadeSkin && !A.crystal) dmg *= 0.15;                  // gewöhnliche Waffen prallen an Jade ab
   return Math.max(1, dmg);
 }
 function preview(att, pos, def) {
@@ -3251,6 +3285,7 @@ async function doAttack(att, def) {
   att.xp += dmg;
   log(`${uname(att)} trifft ${uname(def)}: ${dmg} Schaden.`, cls);
   if (att.side === 0) tut('attack');
+  if (def.hp > 0) onHit(att, def);
   if (def.hp <= 0) {
     kill(def, att); if (att.side === 0) tut('kill');
   } else if (hexDist(att.c, att.r, def.c, def.r) <= TYPES[def.type].rng) {
@@ -3269,7 +3304,28 @@ async function doAttack(att, def) {
   if (S.bossFell === 1) { S.bossFell = 2; await bossFall(); }
   await sleep(200);
 }
+// Brandpfeile, Netze, Pfeile auf Stein
+function onHit(att, def) {
+  const A = TYPES[att.type], D = TYPES[def.type];
+  if (A.fire && D.wood) { def.burn = 3; def.burnBy = att; fxText(def, 'Brennt!', '#ffb050', 250); log(`${uname(def)} fängt Feuer!`, att.side === 0 ? 'p' : 'e'); }
+  if (A.net) { def.netted = Math.min(2, (def.netted || 0) + 1); fxText(def, def.netted > 1 ? 'Fest im Netz!' : 'Im Netz!', '#e8dcc0', 250); log(`${uname(def)} verheddert sich im Netz.`, att.side === 0 ? 'p' : 'e'); }
+  if (catOf(att.type) === 'bogen' && D.stone) fxText(def, 'Prallt ab!', '#d8d4cc', 250);
+  if (D.jadeSkin && !A.crystal) fxText(def, 'Prallt ab!', '#9affd0', 250);
+  if (A.bolt) { // grüne Blitze setzen Häuser in Brand
+    const h = [[def.c, def.r], ...neighbors(def.c, def.r)].find(([c, r]) => terr(c, r) === 'v' && !(S.fires || []).includes(K(c, r)));
+    if (h) { S.fires = (S.fires || []).concat(K(h[0], h[1])); log('Ein Haus fängt Feuer!', 'e'); }
+  }
+}
+function burnTick(side) {
+  for (const u of alive(side)) {
+    if (!u.burn) continue;
+    u.burn--; const d = 4; u.hp -= d; u.flash = 1; fxText(u, '🔥 -' + d, '#ffb050');
+    log(`${uname(u)} brennt: ${d} Schaden.`, side === 0 ? 'e' : 'p');
+    if (u.hp <= 0) kill(u, u.burnBy && u.burnBy.hp > 0 ? u.burnBy : u);
+  }
+}
 function kill(victim, killer) {
+  if (TYPES[victim.type].jadeSkin) fxText(victim, 'Tausend Splitter!', '#9affd0');
   killer.xp += 10; killer.kills++;
   if (victim.type === 'aschfuerst' && !S.bossFell) S.bossFell = 1;
   log(`${uname(victim)} (${factionOf(victim)}) fällt!`, 's');
@@ -3322,8 +3378,9 @@ function fxText(u, text, color, delay = 0) {
 }
 
 // ---------- Rundenablauf ----------
-function finishSide(side) { for (const u of alive(side)) u.rested = !u.moved && !u.acted; }
+function finishSide(side) { for (const u of alive(side)) { u.rested = !u.moved && !u.acted; if (u.netted) u.netted--; } }
 function startSide(side) {
+  burnTick(side);
   for (const d of alive(side).filter(x => TYPES[x.type].healer)) for (const u of alive(side)) {
     if (u !== d && hexDist(u.c, u.r, d.c, d.r) === 1 && u.hp < maxHp(u)) { const b = u.hp; u.hp = Math.min(maxHp(u), u.hp + 2); fxText(u, '+' + (u.hp - b), '#9cff9c', 300); }
   }
@@ -3392,7 +3449,8 @@ function checkEnd() {
   const heroAlive = M.skirmish || alive(0).some(u => TYPES[u.type].hero);
   const p = alive(0).length, e = alive(1).length + alive(2).length;
   let res = null;
-  if (!p || !heroAlive) res = false;
+  const protLost = S.units.some(u => u.side === 0 && TYPES[u.type].protect && u.hp <= 0);
+  if (!p || !heroAlive || protLost) res = false;
   else if ((!e && !(M.triggers || []).some(T => T.spawn && !(S.fired && T.id in S.fired))) || S.goalReached) res = true;
   if (res === null) return false;
   S.phase = 'over'; S.busy = false; deselect();
@@ -3422,6 +3480,7 @@ function distField(u) {
   return f;
 }
 async function aiAct(u) {
+  if (u.dormant) return;
   const T = TYPES[u.type], sk = K(u.c, u.r);
   const reach = reachable(u);
   if (u.waitR && alive(0).some(p => hexDist(p.c, p.r, u.c, u.r) <= u.waitR)) u.waitR = 0;
@@ -3442,6 +3501,7 @@ async function aiAct(u) {
       if (u.side === 1) {
         sc += (1 - t.hp / maxHp(t)) * 6;                       // Verwundete gemeinsam erledigen
         if (TYPES[t.type].hero) sc += 3;                       // Der Held ist das wichtigste Ziel
+        if (TYPES[t.type].protect) sc += 6;                    // Die Seelenlosen wollen die Alten holen
         if (TYPES[t.type].magic || TYPES[t.type].healer) sc += 2;
         const pals = alive(1).filter(a => a !== u && hexDist(a.c, a.r, t.c, t.r) === 1).length;
         sc += Math.min(pals, 3) * 1.5;                          // einkreisen statt allein anrennen
@@ -6381,7 +6441,62 @@ const SEELEN_MAT = {
   jade:  { b: '#3e9a6a', l: '#9ae0b4', d: '#1a5236' }
 };
 // Seelenloser: menschliche Gestalt aus Holz, Stein oder Jade, ohne Gesicht
+function tamashiFig(g, t, now, sword) {
+  shp(g, [-6, -30, 6, -30, 8, 0, -8, 0], grad(g, -7, -30, 7, 0, '#8a4a6a', '#3e1e32'), 1);
+  shp(g, [-2, -30, 2, -30, 4.5, 0, 1.5, 0], '#5e2e48', 0);
+  g.strokeStyle = 'rgba(240,210,220,0.5)'; g.lineWidth = 0.6;
+  for (const [x, y] of [[-4, -8], [3, -5], [-2, -3], [5, -12]]) { g.beginPath(); g.arc(x, y, 1.2, 0, 7); g.stroke(); }
+  shp(g, [-1.5, -30, 1.5, -30, 4, -23, 2, -22], '#f4ecdc', 0.5);
+  shp(g, [-6.6, -22, 6.8, -22, 6.6, -17.5, -6.4, -17.5], t.main, 0.9);
+  ell(g, -6.2, -0.6, 3, 1.2, '#f2ece0', 0.8); ell(g, 6.4, -0.6, 3, 1.2, '#f2ece0', 0.8);
+  ell(g, 1.2, -35, 4.5, 5, SKIN);
+  blob(g, [-3.4, -34, -4.4, -41, 1.2, -42, 6, -40.6, 5.8, -38, 2, -39.2, -0.6, -36.4, -2.4, -32, -3.4, -34], '#2a201a');
+  ell(g, -3.6, -42.2, 3.2, 2.6, '#2a201a', 0.8);
+  curve(g, [-2, -40.4, 1, -42, 4.6, -40.2], '#c8c4bc', 0.7);
+  ln(g, -6.6, -44.6, -0.6, -40, '#c9a24a', 0.6);
+  ell(g, 4.2, -35.2, 0.7, 0.8, OL, 0);
+  ln(g, 3.4, -32.6, 5, -32.6, '#8a5a4a', 0.3);
+  const p = 0.7 + 0.3 * Math.sin(now / 300);
+  if (sword) {
+    // Schwert mit kristallklarer Klinge, nach vorn gestoßen
+    limb(g, [-3, -28, 2, -24, 7, -23], 2.6, '#7a3e5c'); limb(g, [3, -29, 6, -25, 8, -23], 2.6, '#8a4a6a');
+    ln(g, 6, -23, 10, -23.6, '#3a2a1a', 1.4); ell(g, 10.4, -23.6, 1, 2.4, '#c9a24a', 0.6);
+    glow(g, '#c8f4ff', 10 * p, () => { shp(g, [11, -25, 30, -26.6, 33, -24.4, 11, -22.4], grad(g, 11, -26, 33, -23, '#f4feff', '#9ed8ff'), 0.6); });
+    ln(g, 12, -24, 30, -25, 'rgba(255,255,255,0.8)', 0.3);
+    ell(g, 7.6, -23.2, 1.7, 1.7, SKIN, 0.6);
+  } else {
+    limb(g, [-3, -28, -1, -22, 5, -22], 2.6, '#7a3e5c'); limb(g, [3, -29, 7, -24, 8, -22], 2.6, '#8a4a6a');
+    ln(g, 8, -21.5, 8, -17, '#3a2a1a', 0.5);
+    glow(g, '#ffb050', 12 * p, () => { ell(g, 8, -12, 4.2, 5.2, grad(g, 4, -17, 12, -7, '#fff0c0', '#e85a3a'), 0.8); });
+    ln(g, 4.6, -12, 11.4, -12, 'rgba(120,40,20,0.5)', 0.3);
+    shp(g, [5.2, -17.4, 10.8, -17.4, 10.4, -16.2, 5.6, -16.2], '#2a1a10', 0.4); shp(g, [5.6, -7.8, 10.4, -7.8, 10.8, -6.6, 5.2, -6.6], '#2a1a10', 0.4);
+    ell(g, 5.6, -22, 1.6, 1.6, SKIN, 0.6);
+  }
+}
+// Flammen über einem brennenden Holzkrieger
+function flameFx(g, now) {
+  g.save();
+  for (let i = 0; i < 5; i++) {
+    const x = -6 + i * 3, ph = now / 140 + i * 1.7, h = 9 + Math.sin(ph) * 3 + (i % 2) * 3, y = -22 - (i % 3) * 7;
+    glow(g, '#ffb030', 8, () => {
+      g.beginPath(); g.moveTo(x - 2.6, y); g.quadraticCurveTo(x - 2.4, y - h * 0.6, x + Math.sin(ph) * 1.5, y - h); g.quadraticCurveTo(x + 2.4, y - h * 0.5, x + 2.6, y); g.closePath();
+      g.fillStyle = 'rgba(255,140,30,0.85)'; g.fill();
+    });
+    g.beginPath(); g.moveTo(x - 1.2, y); g.quadraticCurveTo(x, y - h * 0.6, x + 1.2, y); g.closePath(); g.fillStyle = 'rgba(255,240,150,0.9)'; g.fill();
+  }
+  g.restore();
+}
+// Fischernetz über einem gefangenen Krieger
+function netFx(g, n) {
+  g.save(); g.strokeStyle = n > 1 ? 'rgba(240,230,200,0.95)' : 'rgba(240,230,200,0.75)'; g.lineWidth = 0.7;
+  g.beginPath(); g.ellipse(0, -24, 11, 22, 0, 0, 7); g.clip();
+  const st = n > 1 ? 3 : 4.5;
+  for (let k = -30; k < 30; k += st) { g.beginPath(); g.moveTo(k - 20, -48); g.lineTo(k + 20, 0); g.moveTo(k + 20, -48); g.lineTo(k - 20, 0); g.stroke(); }
+  g.restore();
+  g.strokeStyle = 'rgba(200,180,130,0.9)'; g.lineWidth = 1; g.beginPath(); g.ellipse(0, -2, 10, 2.5, 0, 0, 7); g.stroke();
+}
 function seelenlos(g, t, now, kind) {
+
   const M = SEELEN_MAT[kind], sw = Math.sin(now / 640) * 0.7;
   if (kind === 'stein') { g.scale(1.12, 1.12); }
   // Beine mit Kugelgelenken
@@ -6421,12 +6536,13 @@ function seelenlos(g, t, now, kind) {
     for (const k of [0.45, 0.65, 0.85]) ell(g, 6 + 10 * k, -25 - 20 * k + sw * k, 0.9, 0.9, '#3e3b36', 0);
     limb(g, [4, -29, 4, -23, 6.5, -25], 3.2, M.b); ell(g, 6.5, -25, 2, 2, M.l, 0.6);
   } else {
-    // Jade: kaltes Licht zwischen den Händen
-    const p = 0.6 + 0.4 * Math.sin(now / 260);
-    limb(g, [4, -29, 8, -25, 11, -27], 2.8, M.b);
-    glow(g, '#7dffc4', 12 * p, () => { ell(g, 13.5, -28, 3 + p, 3 + p, 'rgba(170,255,220,0.85)', 0); });
-    ell(g, 13.5, -28, 1.3, 1.3, '#ffffff', 0);
-    ell(g, 11, -27, 1.7, 1.7, M.l, 0.6);
+    // Jade: leuchtendes Jadeschwert, aus dem grüne Blitze schlagen
+    const p = 0.6 + 0.4 * Math.sin(now / 200);
+    glow(g, '#7dffc4', 10 * p, () => { shp(g, [9, -28, 25, -47 + sw, 27, -45.5 + sw, 10.6, -26.4], grad(g, 9, -28, 26, -46, '#c8ffe4', '#3ec88a'), 0.7); });
+    const z = Math.floor(now / 90) % 3;
+    if (z !== 2) { g.save(); g.strokeStyle = 'rgba(190,255,220,0.95)'; g.lineWidth = 0.8; g.shadowColor = '#7dffc4'; g.shadowBlur = 6; g.beginPath(); g.moveTo(26, -46 + sw); g.lineTo(30, -49 + z * 2); g.lineTo(28.5, -51); g.lineTo(33, -55 + z); g.stroke(); g.restore(); }
+    ell(g, 9.4, -27.4, 2.4, 1, '#1a5236', 0.6, -0.9);
+    limb(g, [4, -29, 6.5, -24, 8.5, -26.5], 2.8, M.b); ell(g, 8.4, -26.4, 1.8, 1.8, M.l, 0.6);
   }
 }
 Object.assign(FIG, {
@@ -6543,6 +6659,70 @@ Object.assign(FIG, {
     ell(g, 15.4, -26, 2.1, 2.1, SKIN);
     ell(g, 0, -26, 1.9, 1.9, SKIN);
   },
+  honoo(g, t, now) {
+    // Köcher mit Brandpfeilen
+    shp(g, [-9, -33, -5.5, -35, -1.5, -17, -5, -15.5], '#5a2e1a');
+    for (const [x1, y1] of [[-8.5, -34], [-7, -35], [-5.5, -35.6]]) { ln(g, x1, y1, x1 - 2, y1 - 5, '#3a2a1a', 0.7); ell(g, x1 - 2.2, y1 - 5.6, 1, 1.2, '#ff9a30', 0); }
+    // kurzes Haar mit roter Schleife
+    blob(g, [-4, -33, -6, -40, -1, -44, 5, -43, 6, -38, 3, -40, 0, -36, -2, -31, -4, -33], '#2a140c');
+    // Hakama
+    shp(g, [-6, -18, 6, -18, 9.5, 0, 1.5, 0, 0, -9, -1.5, 0, -9.5, 0], grad(g, -8, -18, 8, 0, t.light, t.dark), 1);
+    ell(g, -6.5, -0.6, 3.1, 1.2, '#f2ece0', 0.8); ell(g, 7, -0.6, 3.1, 1.2, '#f2ece0', 0.8);
+    // Oberteil mit Flammenborte
+    shp(g, [-6, -18, 6, -18, 6.5, -31, -6, -31], grad(g, -6, -31, 7, -18, '#fff4e4', '#d8c4a4'), 1);
+    shp(g, [-1.5, -31, 1.5, -31, 5, -23, 3, -22], '#d8542a', 0.5);
+    shp(g, [-6.4, -21, 6.6, -21, 6.6, -18, -6.4, -18], '#d8542a', 0.8);
+    for (let x = -5; x < 6; x += 2.6) shp(g, [x, -18.4, x + 1.3, -20.6, x + 2.6, -18.4], '#ffc040', 0);
+    // Kopf
+    ell(g, 1.3, -36, 4.5, 5, SKIN);
+    blob(g, [-3.2, -35, -4, -42, 1.4, -42.6, 6.2, -41.6, 6, -38, 2.6, -39.6, 0, -37.6, -2.4, -33, -3.2, -35], '#2a140c');
+    ell(g, 4.3, -36.2, 0.75, 0.9, OL, 0);
+    shp(g, [-4.6, -41, -2, -42.4, -2.6, -39.4], '#d8542a', 0.5); shp(g, [-4.6, -41, -7, -43, -6.4, -39.6], '#d8542a', 0.5);
+    // Bogen und brennender Pfeil
+    g.beginPath(); g.moveTo(8, -60); g.quadraticCurveTo(22, -30, 9, -2);
+    g.lineWidth = 3.6; g.strokeStyle = OL; g.stroke(); g.lineWidth = 2; g.strokeStyle = '#5a2414'; g.stroke();
+    g.beginPath(); g.moveTo(8, -60); g.lineTo(0, -26); g.lineTo(9, -2); g.lineWidth = 0.7; g.strokeStyle = '#f2f2f2'; g.stroke();
+    ln(g, 0, -26, 20, -26, '#c8a070', 0.9);
+    const p = 0.6 + 0.4 * Math.sin(now / 120);
+    glow(g, '#ff9a30', 9 * p, () => { blob(g, [20, -28.5, 26 + p * 2, -27.5, 29 + p * 2, -26, 26 + p * 2, -24.5, 20, -23.5], 'rgba(255,150,40,0.9)', 0); });
+    ell(g, 23, -26, 2.2, 1.2, '#fff0a0', 0);
+    shp(g, [-1, -30.5, 15, -27.8, 15, -24.4, -1, -25.4], '#fff4e4');
+    ell(g, 15.4, -26, 2.1, 2.1, SKIN);
+    ell(g, 0, -26, 1.9, 1.9, SKIN);
+  },
+  tamashi_k(g, t, now) { tamashiFig(g, t, now, true); },
+  tamashi(g, t, now) { tamashiFig(g, t, now, false); },
+  netzbauer(g, t, now) {
+    const sw = Math.sin(now / 520) * 0.8;
+    limb(g, [-2.5, -16, -4.5, -8, -6, -2], 3.4, '#6a5a44');
+    limb(g, [2.5, -16, 4.5, -8, 6, -2], 3.4, '#7a6a50');
+    ln(g, -5.4, -6, -6, -2, SKIN, 1.4); ln(g, 5.4, -6, 6, -2, SKIN, 1.4);
+    ell(g, -6.6, -0.7, 3, 1.2, '#c8a860', 0.7); ell(g, 6.6, -0.7, 3, 1.2, '#c8a860', 0.7);
+    // Netzbündel am hinteren Arm
+    limb(g, [-4, -28, -8, -22, -9, -17], 2.8, t.dark);
+    g.save(); ell(g, -10, -14, 5.5, 6.5, 'rgba(220,206,170,0.9)', 0.8); g.beginPath(); g.ellipse(-10, -14, 5.5, 6.5, 0, 0, 7); g.clip();
+    g.strokeStyle = 'rgba(110,90,50,0.8)'; g.lineWidth = 0.5;
+    for (let k = -20; k < 4; k += 2.4) { g.beginPath(); g.moveTo(k, -22); g.lineTo(k + 10, -6); g.moveTo(k + 10, -22); g.lineTo(k, -6); g.stroke(); }
+    g.restore();
+    for (const [fx, fy] of [[-14, -9], [-6, -8], [-10, -7]]) ell(g, fx, fy, 0.9, 0.9, '#a8a8a0', 0.4);
+    // Jacke und Gürtel
+    shp(g, [-6, -14, 6, -14, 6.5, -30, -6, -30], grad(g, -6, -30, 6, -14, t.light, t.dark), 1);
+    shp(g, [-1.5, -30, 1.5, -30, 4.5, -22, 2.5, -21], '#e8dcc0', 0.6);
+    shp(g, [-6.4, -18.5, 6.6, -18.5, 6.6, -16, -6.4, -16], '#5a3a1c', 0.7);
+    // Kopf mit Stirnband
+    ell(g, 1, -34.5, 4.5, 4.8, SKIN);
+    blob(g, [-3.4, -34, -3.8, -39.6, 1, -40.4, 5.4, -39.4, 5, -37.4, 1, -37.8, -2, -36, -3.4, -34], '#1c1410');
+    ln(g, -3.6, -37.2, 5.4, -37.4, '#f4ecdc', 1);
+    locke(g, [-3.6, -37.2, -6.6, -36, -8.4, -33.4], 0.8, '#f4ecdc', now, 1.2);
+    ell(g, 3.9, -34.5, 0.75, 0.85, OL, 0);
+    ln(g, 2, -31.8, 4.2, -31.6, '#6a4030', 0.3);
+    // Spitzhacke erhoben
+    limb(g, [6, -24, 13, -48 + sw], 1.8, '#7a5230');
+    g.beginPath(); g.moveTo(5, -49 + sw); g.quadraticCurveTo(13, -53 + sw, 21, -47 + sw); g.lineWidth = 3.4; g.strokeStyle = OL; g.lineCap = 'round'; g.stroke(); g.lineWidth = 1.8; g.strokeStyle = '#b8bec6'; g.stroke();
+    limb(g, [3.5, -28.5, 6, -25, 8, -30], 2.8, t.main);
+    ell(g, 8.4, -31, 1.9, 1.9, SKIN, 0.7);
+  },
+
   holz(g, t, now) { seelenlos(g, t, now, 'holz'); },
   stein(g, t, now) { seelenlos(g, t, now, 'stein'); },
   jade(g, t, now) { seelenlos(g, t, now, 'jade'); }
@@ -6684,6 +6864,8 @@ function drawFigure(g, u, now, opt = {}) {
   g.translate(0, bob);
   if ((u.face || (u.side >= 1 ? -1 : 1)) < 0) g.scale(-1, 1);
   FIG[u.type](g, t, now);
+  if (u.netted) netFx(g, u.netted);
+  if (u.burn) flameFx(g, now);
   g.restore();
 }
 const iconCache = {};
@@ -6864,6 +7046,7 @@ function render(now) {
     ctx.globalAlpha = 1;
   }
   drawFangronFx(now);
+  for (const k of (S.fires || [])) { const h = HEX.get(k); if (!h) continue; const p = center(h.c, h.r); if (!inView(p.x, p.y) || (S.fog && !S.vis.has(k))) continue; for (const [dx, dy] of [[-10, 2], [9, 6]]) { ctx.save(); ctx.translate(p.x + dx, p.y + dy + 14); ctx.scale(0.8, 0.8); flameFx(ctx, now + dx * 40); ctx.restore(); } }
   drawAmbientOver(now);
   ctx.restore();
   requestAnimationFrame(render);
@@ -6940,7 +7123,7 @@ function unitHtml(u) {
 function updateUI() {
   const ti = document.getElementById('turnInfo');
   ti.textContent = S.mission.title + ' · ' + (S.phase === 'over' ? `Runde ${S.turn} · Spielende`
-    : S.phase === 'ai' ? `Runde ${S.turn} · Die Aschhorde zieht …`
+    : S.phase === 'ai' ? `Runde ${S.turn} · ${CUR.foeTurn || 'Die Aschhorde zieht …'}`
     : `Runde ${S.turn} · Dein Zug · ${alive(0).filter(u => !isDone(u)).length} Einheiten bereit`);
   document.getElementById('endTurn').disabled = S.phase !== 'player' || S.busy;
   document.getElementById('undoBtn').disabled = !(S.sel && S.sel.undo && !S.sel.acted) || S.busy;
