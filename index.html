@@ -3291,7 +3291,7 @@ async function coverFire(att, def) {
   await animAttack(sh, att);
   att.hp -= dmg; att.flash = 1; fxText(att, '-' + dmg, '#ffd0c8'); sh.xp += dmg;
   log(`Deckungsfeuer von ${uname(sh)}: ${dmg} Schaden an ${uname(att)}.`, sh.side === 0 ? 'p' : 'e');
-  if (att.hp <= 0) kill(att, sh);
+  if (att.hp <= 0) kill(att, sh); else onHit(sh, att);
   checkLevel(sh);
   await sleep(200);
 }
