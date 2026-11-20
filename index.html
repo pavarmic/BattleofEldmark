@@ -184,8 +184,13 @@
   .bstats td:nth-child(n+2){text-align:right;white-space:nowrap}
   .bstats .stars{color:#b8860b}
   .bstats .up{color:#2f7a2f}
-  .uimg{display:block;width:100%;height:150px;object-fit:cover;object-position:center 58%;border-radius:8px;border:1px solid #b8913a;margin:6px 0 4px}
-  body.phone .uimg{height:90px}
+  .uimg{display:block;width:auto;height:auto;max-width:100%;max-height:min(360px,42vh);margin:6px auto 4px;border-radius:8px;border:1px solid #b8913a}
+  .uimg{cursor:zoom-in}
+  body.phone #info{position:relative}
+  body.phone #info:has(.uimg){padding-right:92px}
+  body.phone .uimg{position:absolute;top:8px;right:10px;width:auto;height:auto;max-height:78px;max-width:72px;margin:0;border-radius:5px}
+  .imgzoom{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#000d;cursor:zoom-out}
+  .imgzoom img{max-width:100%;max-height:100%;border-radius:10px;border:2px solid #b8913a;box-shadow:0 6px 30px #000}
   .finale-cap{text-align:center;font-style:italic;opacity:.8;margin:0 0 10px}
   img.finale.portrait{width:auto;max-width:72%;max-height:46vh;margin:4px auto 8px}
   img.finale.portrait.tall{max-height:36vh}
@@ -7239,6 +7244,11 @@ function statsOf(u) {
   const T = TYPES[u.type];
   return { atk: T.atk + u.lvl, def: T.def + u.lvl, mv: T.mv, rng: T.rng };
 }
+function zoomImg(img) {
+  const d = document.createElement('div'); d.className = 'imgzoom';
+  d.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
+  d.onclick = () => d.remove(); document.body.appendChild(d);
+}
 function unitImg(type) {
   return { wolf: WOLFSREITER_IMG, greif: GREIF_IMG, dunkelwolf: WOLF_IMG, eiche: FANGRON_IMG, zwerg: ZWERG_IMG, asche: ASCHE_IMG, kokoro: KOKORO_IMG, honoo: HONOO_IMG, tamashi: TAMASHI_IMG, tamashi_k: TAMASHI_K_IMG, netzbauer: BAUER_IMG, holz: HOLZ_IMG, stein: STEIN_IMG, jade: JADE_IMG }[type] || null;
 }
@@ -7256,7 +7266,7 @@ function unitHtml(u) {
   <div>Erfahrung: <b>${xpTxt}</b></div><div class="bar"><div style="width:${Math.min(1, xpRatio) * 100}%;background:#c9a2ff"></div></div>
   <table class="st"><tr><td>Angriff</td><td>${st.atk}</td><td>Verteidigung</td><td>${st.def}</td></tr>
   <tr><td>Bewegung</td><td>${st.mv}</td><td>Reichweite</td><td>${st.rng}</td></tr></table>
-  ${unitImg(u.type) ? `<img class="uimg" src="${unitImg(u.type)}" alt="${T.name}"${({ kokoro: ' style="object-position:center 21%"', honoo: ' style="object-position:center 27%"', tamashi: ' style="object-position:center 24%"', tamashi_k: ' style="object-position:center 26%"', netzbauer: ' style="object-position:center 20%"', holz: ' style="object-position:center 24%"', stein: ' style="object-position:center 22%"', jade: ' style="object-position:center 22%"' })[u.type] || ''}>` : ''}<small>${T.desc}</small><div class="cattxt"><small><b>${CATS[catOf(u.type)].n}:</b> ${CATS[catOf(u.type)].txt}</small></div>${state ? `<div style="margin-top:4px"><small><i>${state}</i></small></div>` : ''}`;
+  ${unitImg(u.type) ? `<img class="uimg" src="${unitImg(u.type)}" alt="${T.name}" title="Antippen zum Vergrößern" onclick="zoomImg(this)">` : ''}<small>${T.desc}</small><div class="cattxt"><small><b>${CATS[catOf(u.type)].n}:</b> ${CATS[catOf(u.type)].txt}</small></div>${state ? `<div style="margin-top:4px"><small><i>${state}</i></small></div>` : ''}`;
 }
 function updateUI() {
   const ti = document.getElementById('turnInfo');
