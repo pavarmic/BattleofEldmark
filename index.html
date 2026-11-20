@@ -350,6 +350,7 @@ const TER = {
   'H': { n: 'Hütte des Einsiedlers', cost: Infinity, def: 0, col: [118, 164, 76] },
   'F': { n: 'Brennende Stämme', cost: Infinity, def: 0, col: [132, 150, 80] },
   'I': { n: 'Waldteich', cost: Infinity, def: 0, col: [60, 122, 170] },
+  'S': { n: 'Strand', cost: 1, def: 0, col: [220, 206, 160] },
   'R': { n: 'Reisfeld', cost: 2, def: 0, col: [104, 150, 128] }
 };
 let FACTION = ['Wächter von Eldmark', 'Aschhorde'];
@@ -417,8 +418,16 @@ const TYPES = {
              desc: 'Flinker Bauer aus Kirisato mit Fischernetz und Spitzhacke. Sein Netz macht Gegner langsamer (zwei Netze halten einen Steinkrieger fast fest). Mit der Spitzhacke +5 Angriff gegen Stein.' },
   jade:    { name: 'Jadekrieger', icon: '💠', hp: 40, atk: 10, def: 8, mv: 3, rng: 2, counter: 0.8, magic: true, bolt: '#7dffc4', jadeSkin: true,
              desc: 'Der stärkste Seelenlose, aus leuchtender grüner Jade, geboren aus grünem Nebel. Spezialfähigkeit: schleudert grüne Blitze 2 Felder weit, die Häuser in Brand setzen. Gewöhnliche Waffen prallen an ihm ab. Nur eine kristallklare Klinge kann ihn brechen.' },
-  tamashi_k: { name: 'Tamashi', icon: '🗡️', hp: 26, atk: 8, def: 2, mv: 3, rng: 1, counter: 0.6, protect: true, crystal: true, art: 'Die',
-             desc: 'Kokoros Mutter mit dem Schwert mit der kristallklaren Klinge. Nur dieses Schwert durchdringt Jade. Wird Tamashi geholt, ist die Mission verloren!' }
+  tamashi_k: { name: 'Tamashi', icon: '🗡️', hp: 30, atk: 8, def: 3, mv: 3, rng: 1, counter: 0.6, protect: true, crystal: true, art: 'Die',
+             desc: 'Kokoros Mutter mit dem Schwert mit der kristallklaren Klinge. Nur dieses Schwert durchdringt Jade. Wird Tamashi geholt, ist die Mission verloren!' },
+  kitsune: { name: 'Kitsune', icon: '🦊', hp: 18, atk: 7, def: 2, mv: 5, rng: 2, counter: 0.5, magic: true, forest: true, art: 'Die',
+             desc: 'Ein Fuchsgeist mit zwei Schwänzen. Wirft blaues Fuchsfeuer 2 Felder weit, das durch Rüstung dringt. Schnell, und im Wald so flink wie auf der Wiese. Stark gegen böse Geister.' },
+  tanuki:  { name: 'Tanuki', icon: '🍶', hp: 28, atk: 6, def: 3, mv: 4, rng: 1, counter: 0.7, forest: true, healer: true,
+             desc: 'Ein fröhlicher Marderhund mit Strohhut und Sakekrug. Zäher, als er aussieht. Heilt benachbarte Verbündete um 2 Lebenspunkte pro Runde und kommt im Wald leicht voran.' },
+  onibi:   { name: 'Irrlicht', icon: '🔵', hp: 14, atk: 6, def: 1, mv: 4, rng: 2, counter: 0.5, magic: true, fly: true, bolt: '#7ac8ff', art: 'Das',
+             desc: 'Ein böser Waldgeist aus kaltem blauem Feuer. Schwebt über alles hinweg und wirft Geisterfeuer 2 Felder weit. Lauert Wanderern im Wald auf und lockt sie in die Irre.' },
+  spaeher: { name: 'Schattenspäher', icon: '🌫️', hp: 16, atk: 6, def: 2, mv: 5, rng: 1, counter: 0.6,
+             desc: 'Ein Seelenloser aus Rauch und Schatten, der Späher des Kalten Königs. Sehr schnell und lautlos, aber nicht zäh. Wo die Schatten sind, folgen bald die Krieger.' }
 };
 const LEVELS = [0, 15, 40, 75];
 
@@ -473,7 +482,7 @@ function addUnit(type, side, c, r, wild = false) {
   S.units.push(u);
   return u;
 }
-const factionOf = u => u.side === 2 ? 'Dunkelwölfe' : u.wild ? 'Uraltes Wesen' : FACTION[u.side];
+const factionOf = u => u.side === 2 ? 'Dunkelwölfe' : u.wild ? (CUR.wildName || 'Uraltes Wesen') : FACTION[u.side];
 const foesOf = u => S.units.filter(o => o.hp > 0 && o.side !== u.side);
 
 // ---------- Geheime Orte ----------
@@ -486,6 +495,7 @@ const SECRET_SPOTS = [
   { c: 13, r: 12, name: 'Verfallener Tempel', kind: 'ruine' }
 ];
 const STORIES = {
+  onibi: 'Ein blaues Licht flackert auf und kichert. Ein Irrlicht, ein böser Waldgeist!',
   greif: 'Hoch oben nistet ein Greif. Er erkennt das Banner von Eldmark, stößt einen gellenden Schrei aus und schließt sich euch an!',
   eiche: 'Zwischen den Steinen regt sich etwas. Ein uralter Eichenhüter erwacht, knarrt und brummt: „Eldmark ruft. Ich folge.“',
   baer: 'Ein einsamer Werbär hat hier Zuflucht gesucht. Er schnuppert, brummt zufrieden und kämpft ab jetzt an eurer Seite!',
@@ -534,7 +544,7 @@ async function exploreSecret(u) {
       const nu = addUnit(o.unit, 1, spot[0], spot[1], true);
       fxText(nu, 'Erwacht!', '#e0b8ff');
       img = { type: o.unit, side: 2 };
-      text = STORIES[o.unit];
+      text = heroText(o.text || STORIES[o.unit]);
       log(`${sec.name}: Ein ${TYPES[o.unit].name} ist erwacht!`, 'e');
     } else text = STORIES.leer[1];
     title = 'Etwas ist erwacht …'; cls = 'monster';
@@ -2850,7 +2860,9 @@ const SONNE_MISSIONS = [
   outro: 'Tamashi rammt die kristallklare Klinge in den Jadekrieger. Er zerspringt in tausend Splitter, die wie Funken über den Weg tanzen.<br><br>Als der Funke des letzten Kristalls erlischt, ist es dunkel. Kein Licht. Nur Nacht. Nacht und Stille.<br><br>Die Rebellen schauen sich an. Dann flüstert Kokoro: „Rennt. Rennt, rennt in den Wald!“',
   reward: []
  }
-
+,
+ {"id": "s2", "style": "sonne", "mist": true, "bloom": 0.96, "title": "Yume no mori", "sub": "Flucht in den Traumwald", "map": ["hffhfhffhfhffhfhffhfhf", "ffffffffffffffffffffff", "ffffffffff..ffffffffff", "ffffff..f...ff..ffffff", "ffffff...f..ff...fffff", "f...ff..ffffff..fff...", "f...ddfffffdddfffff...", "...d.ddddddffdddff...d", "f....fff..ffffffdddddd", "f...fff...fffff..ff...", "fffff..f..ff..f...ffff", "ffff...ffff...f..fffff", "fffff..fffff..ffffffff", "hfffhfffhfffhfffhfffhf"], "trails": [[[21, 7], [21, 8], [20, 8], [19, 8], [18, 8], [17, 8], [16, 8], [15, 7], [14, 7], [13, 7], [13, 6], [12, 6], [11, 6], [10, 7], [9, 7], [8, 7], [7, 7], [6, 7], [5, 7], [5, 6], [4, 6], [3, 7]]], "slots": [[20, 7], [21, 6], [20, 6], [21, 8], [20, 8], [19, 7], [21, 5], [19, 6], [19, 8], [20, 9], [21, 9], [20, 5]], "joinUnits": ["tamashi_k"], "join": [[21, 7]], "enemy": [["onibi", 8, 4, "wild"], ["onibi", 14, 10, "wild"], ["onibi", 6, 9, "wild"], ["holz", 12, 6, "wait"]], "secrets": [{"c": 10, "r": 3, "name": "Fuchsbau", "kind": "hoehle"}, {"c": 12, "r": 11, "name": "Alte Zeder", "kind": "schrein"}, {"c": 5, "r": 11, "name": "Moosschrein", "kind": "schrein"}], "secretDeck": [{"kind": "ally", "unit": "kitsune", "text": "Zwischen den Wurzeln glimmen zwei Augen, dann ein blaues Flämmchen. Eine weiße Füchsin mit zwei Schwänzen tritt heraus: ein <b>Kitsune</b>, ein Fuchsgeist. Sie mustert {HERO} lange. „Du hast ein Herz, das brennt. Ich gehe ein Stück mit dir.“"}, {"kind": "ally", "unit": "tanuki", "text": "Im Farn raschelt es. Ein dicker <b>Tanuki</b> mit Strohhut und Sakekrug watschelt hervor und lacht: „Schatten in meinem Wald? Das gefällt mir gar nicht. Wer müde ist, dem helfe ich auf die Beine.“"}, {"kind": "monster", "unit": "onibi", "text": "Plötzlich schwebt ein blaues Licht hervor. Kein Glühwürmchen: ein <b>Irrlicht</b>, ein böser Waldgeist. Es kichert und stürzt sich auf euch!"}], "critters": [["reh", 15, 4], ["hase", 9, 9], ["fuchs", 16, 10], ["reh", 3, 10], ["hase", 7, 3]], "goal": {"c": 2, "r": 7, "name": "Fuchsschrein"}, "goalDeco": "torii", "foeLvl": 0, "foeUp": 0, "intro": "Sie rennen. Hinter ihnen versinkt Kirisato in der Nacht, vor ihnen liegt der <b>Yume no mori</b>, der Traumwald. Die Alten sagen, wer dort schläft, träumt mit offenen Augen. Zwischen den Stämmen hängt Nebel, und fremde Lichter tanzen zwischen den Bäumen. Manche Lichter sind freundlich. Andere nicht.<br><br>{HERO} spürt es im Nacken: Etwas folgt ihnen. Tamashi trägt noch immer das Schwert mit der kristallklaren Klinge. Weit im Westen, so erzählt man, steht ein alter <b>Fuchsschrein</b>. Dort soll der Wald seine Gäste beschützen.", "goalText": "Flieht durch den Traumwald zum Fuchsschrein im Westen. Tamashi darf nicht fallen.", "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 21, 5], ["spaeher", 21, 9], ["spaeher", 20, 7]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [20, 7], "place": "Am Waldrand", "title": "Schatten im Rücken", "log": "Drei Schattenspäher nehmen eure Spur auf!", "text": "Hinter euch, am Waldrand, lösen sich drei Gestalten aus der Dunkelheit. Sie haben keine Gesichter, nur glatte Masken, und um sie herum kräuselt sich Rauch. <b>Schattenspäher</b> des Kalten Königs. Sie sind schnell, und sie haben eure Spur.<br><br><small>Schattenspäher sind flink, aber nicht zäh. Lauft weiter, oder stellt euch ihnen.</small>"}, {"id": "nachschub", "after": "schatten", "turn": 3, "spawn": [["spaeher", 21, 6], ["holz", 21, 8]], "shout": "…", "img": "holz", "imgSide": 1, "place": "Im Traumwald", "title": "Sie geben nicht auf", "log": "Weitere Seelenlose folgen euch in den Wald!", "text": "Zwischen den Stämmen knackt Holz. Ein Holzkrieger stapft durch das Unterholz, und neben ihm huscht ein weiterer Schatten. Die Seelenlosen geben nicht auf."}], "outro": "Am Fuchsschrein wird es still. Die Schatten bleiben zwischen den Bäumen stehen, als gäbe es eine Grenze, die sie nicht überschreiten dürfen. Tamashi sinkt auf die moosigen Stufen und atmet durch.<br><br>Dann flüstert eine Stimme aus dem Schrein, leise wie Wind in den Blättern: „Hier schützt euch der Wald. Aber nicht für lange. Folgt dem Bach nach Süden, bis ihr das Meer riecht. Am Meer gibt es Boote.“<br><br>{HERO} schaut die anderen an. Zum ersten Mal seit der Nacht der Laternen hat sie einen Plan.", "reward": []},
+ {"id": "s3", "style": "sonne", "bloom": 0.93, "title": "Yume no Kaigan", "sub": "Der Weg zum Meer", "map": ["fffffffffffd.fffffffff", "ffffffffffd..fffffffff", "fffffffddddd.fffffffff", "ffff..dfffffffffffffff", "ffff..dfffffffff..ffff", "ffff..dffffffff...ffff", "fffffffdffffffff..ffff", "fffffffd.fffffffffffff", "fff..ff.ddffff..ffffff", "ff...ff..dddf...ffffff", "fff.hffSSfSSdSS.Sfhhff", "hhhhSSSSSSSSSSSSSSShhh", "wwwwSSSSSSSSSSSSSSSwww", "wwwwwwwwwwwwwwwwwwwwww", "wwwwwwwwwwwwwwwwwwwwww"], "trails": [[[11, 0], [10, 1], [11, 2], [10, 2], [9, 2], [8, 2], [7, 2], [6, 3], [6, 4], [6, 5], [7, 6], [7, 7], [8, 8], [9, 8], [9, 9], [10, 9], [11, 9], [12, 10]]], "slots": [[11, 1], [12, 0], [11, 0], [12, 2], [10, 1], [11, 2], [10, 2], [9, 2], [13, 0], [13, 1], [8, 2], [10, 0]], "joinUnits": ["tamashi_k"], "join": [[12, 1]], "enemy": [["holz", 6, 4, "wait"], ["holz", 10, 9, "wait"], ["onibi", 17, 4, "wild"], ["onibi", 4, 8, "wild"], ["stein", 11, 11, "guard"], ["stein", 13, 11, "guard"]], "secrets": [{"c": 5, "r": 4, "name": "Verlassene Hütte", "kind": "hoehle"}, {"c": 14, "r": 9, "name": "Kleiner Schrein", "kind": "schrein"}, {"c": 16, "r": 6, "name": "Moosige Steinlaterne", "kind": "schrein"}], "secretDeck": [{"kind": "ally", "unit": "yumi", "text": "In der verlassenen Hütte sitzt eine junge Jägerin und spannt blitzschnell ihren langen Bogen. Dann erkennt sie {HERO} und senkt ihn. „Ihr kommt aus Kirisato? Die Schatten haben auch meinen Großvater geholt. Ich komme mit euch.“"}, {"kind": "monster", "unit": "onibi", "text": "Ein blaues Licht flackert auf und kichert. Ein <b>Irrlicht</b>! Böse Waldgeister lieben es, Wanderer in die Irre zu führen."}, {"kind": "leer", "text": "Nur Moos, ein paar Muscheln als Opfergabe und der Geruch von Salz. Das Meer ist nicht mehr weit."}], "critters": [["reh", 3, 4], ["hase", 15, 8], ["fuchs", 18, 5]], "goal": {"c": 12, "r": 12, "name": "Strand von Yume"}, "goalDeco": "boote", "foeLvl": 0, "foeUp": 0, "intro": "Drei Tage folgen sie dem Bach durch den Traumwald. Nachts schlafen sie kaum, denn die Schatten sind nie weit. Am Morgen des vierten Tages riecht die Luft nach Salz. Hinter dem Wald liegt die Küste, der <b>Yume no Kaigan</b>. Dort, so hat die Stimme im Schrein gesagt, liegen Boote am Strand.<br><br>Doch zwischen Wald und Meer warten die Seelenlosen. Und unten am Strand stehen zwei Steinkrieger, reglos wie Felsen in der Brandung.", "goalText": "Kämpft euch durch den Wald zum Strand. Der Strand ist erst frei, wenn beide Steinkrieger gefallen sind. Tamashi darf nicht fallen.", "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 11, 0], ["spaeher", 9, 1]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [11, 1], "place": "Im Traumwald", "title": "Die Schatten sind wieder da", "log": "Schattenspäher folgen euch aus dem Wald!", "text": "Hinter euch kräuselt sich Rauch zwischen den Stämmen. Die Schattenspäher haben eure Spur wieder gefunden. Schnell, zum Meer!"}, {"id": "kueste", "near": [9, 9], "d": 1, "reveal": [12, 11, 5], "look": [12, 11], "place": "Am Waldrand", "title": "Das Meer!", "log": "Ihr seht das Meer und den Strand von Yume.", "text": "Die Bäume werden lichter, und plötzlich liegt es vor euch: das Meer, grau und weit, mit weißen Schaumkronen. Am Strand liegen zwei alte Fischerboote. Doch davor stehen die beiden Steinkrieger und rühren sich nicht.<br><br><small>Pfeile prallen an Stein ab. Netze und Spitzhacken helfen.</small>"}], "outro": "Der letzte Steinkrieger zerfällt am Strand zu Kies, und die Wellen spülen ihn fort. Hinter euch bleiben die Schatten am Waldrand stehen und starren aufs Meer. Wasser mögen sie nicht.<br><br>Am Horizont blinken Lichter. Ein alter Fischer, der sich in den Dünen versteckt hatte, zeigt hinüber: „Das ist Yumenoshima, der Hafen der Träume. Früher kamen dort jeden Tag Boote an. Jetzt gehört er den Seelenlosen.“<br><br>{HERO} schaut zu Tamashi, dann zu Honoo. „Dann holen wir ihn uns zurück.“", "reward": []}
 ];
 
 const NAME_KEY = 'eldmark-heldname', PICK_KEY = 'pocket-kampagne';
@@ -2859,7 +2871,7 @@ const CAMPAIGNS = {
     start: ['held', 'miliz', 'miliz', 'miliz', 'bogen'], faction: ['Wächter von Eldmark', 'Aschhorde'], boss: 'aschfuerst', missions: ELDMARK_MISSIONS, done: true, icon: '⚔',
     img: () => TITLE_IMG, blurb: 'Die Aschhorde hat die Eldmark überrannt. Von einem kleinen Dorf aus beginnt der Widerstand, über die Nebelhügel und den Flüsterwald bis vor die Mauern der Hauptstadt Eldor.' },
   sonne: { beta: true, foeTurn: 'Die Seelenlosen ziehen …', key: 'rote-sonne-kampagne-v2', title: 'Land der roten Sonne', tag: 'Neu: Kokoro gegen die Seelenlosen des Kalten Königs.', hero: 'Kokoro', heroType: 'kokoro', he: false,
-    start: ['kokoro', 'honoo'], faction: ['Kokoros Gefährten', 'Die Seelenlosen'], boss: 'holz', missions: SONNE_MISSIONS, done: false, icon: '☀',
+    start: ['kokoro', 'honoo'], faction: ['Kokoros Gefährten', 'Die Seelenlosen'], wildName: 'Böser Waldgeist', boss: 'holz', missions: SONNE_MISSIONS, done: false, icon: '☀',
     img: () => sonneTitleImg(), blurb: 'Einmal im Jahr, in der Nacht der Laternen, holen die Seelenlosen des Kalten Königs die Alten aus dem Tal. Niemand kehrt zurück. Doch in diesem Jahr stellt sich ihnen ein Mädchen mit Herz entgegen.' }
 };
 let CUR_ID = 'eldmark', CUR = CAMPAIGNS.eldmark, CAMP_KEY, HERO_NAME, MISSIONS, CAMP = null;
@@ -2894,9 +2906,9 @@ function makeSecretsFor(spots, fixed) {
   shuffle(deck);
   return spots.map((sp, i) => ({ ...sp, outcome: deck[i % deck.length], explored: false }));
 }
-let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, LANTERNS = [];
+let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = null, LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk;
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = M.goalDeco && M.goal ? [M.goalDeco, M.goal] : null;
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false,
@@ -2921,7 +2933,7 @@ function setupBattle(M, roster) {
     roster.forEach((v, i) => { const sp = spotFor(i); if (!sp) return; taken.add(K(sp[0], sp[1])); const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = u.xp0 = v.xp; u.lvl = u.lvl0 = v.lvl; u.kills = u.k0 = v.kills || 0; u.hp = maxHp(u); });
     (M.joinUnits || []).forEach((t, i) => { const [c, r] = M.join[i]; addUnit(t, 0, c, r); });
     S.fired = {};
-    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r); if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; u.post = [c, r]; foeVet(u, M); }
+    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r, flag === 'wild'); if (flag === 'wild') u.waitR = 3; if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; u.post = [c, r]; foeVet(u, M); }
   }
   document.getElementById('log').innerHTML = '';
   document.getElementById('overlay').classList.add('hidden');
@@ -3165,7 +3177,7 @@ const CATS = {
 };
 const CAT_OF = { held: 'anf', aschfuerst: 'anf', miliz: 'plaenk', dryade: 'plaenk', schild: 'schwer', zwerg: 'schwer', asche: 'schwer', schwarzork: 'schwer',
   bogen: 'bogen', dorn: 'bogen', hirsch: 'reiter', wolf: 'reiter', stern: 'magier', schatten: 'magier',
-  greif: 'flieger', katapult: 'belag', kokoro: 'anf', honoo: 'bogen', tamashi: 'plaenk', tamashi_k: 'plaenk', netzbauer: 'plaenk', reisbauer: 'plaenk', yumi: 'bogen', holz: 'schwer', stein: 'schwer', jade: 'schwer', baer: 'monster', eiche: 'monster', troll: 'monster', gruft: 'monster', dunkelwolf: 'monster' };
+  greif: 'flieger', katapult: 'belag', kokoro: 'anf', honoo: 'bogen', tamashi: 'plaenk', tamashi_k: 'plaenk', netzbauer: 'plaenk', reisbauer: 'plaenk', yumi: 'bogen', holz: 'schwer', stein: 'schwer', jade: 'schwer', kitsune: 'magier', tanuki: 'plaenk', onibi: 'flieger', spaeher: 'plaenk', baer: 'monster', eiche: 'monster', troll: 'monster', gruft: 'monster', dunkelwolf: 'monster' };
 const catOf = type => CAT_OF[type] || 'schwer';
 // Nebel des Krieges: leichte Späher sehen weit, schwere Truppen kurz
 const SIGHT = { plaenk: 5, reiter: 5, flieger: 6, magier: 4, bogen: 4, anf: 4, schwer: 3, belag: 3, monster: 3 };
@@ -3670,13 +3682,13 @@ function hexPath(c, x, y, rad) {
 }
 function hash(c, r, n = 0) { let h = (c * 374761393 + r * 668265263 + n * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
 
-const GROUND = { 'R': [104, 150, 128], 'o': [136, 158, 84], '.': [116, 166, 78], 'f': [70, 118, 58], 'h': [170, 150, 98], 'w': [56, 118, 176], 'u': [92, 150, 186], 'v': [128, 166, 86],
+const GROUND = { 'S': [222, 208, 164], 'R': [104, 150, 128], 'o': [136, 158, 84], '.': [116, 166, 78], 'f': [70, 118, 58], 'h': [170, 150, 98], 'w': [56, 118, 176], 'u': [92, 150, 186], 'v': [128, 166, 86],
   'b': [56, 118, 176], 'd': [116, 166, 78], 's': [150, 146, 136], 'x': [150, 146, 136], 'm': [140, 138, 132], 't': [140, 138, 132], 'k': [154, 150, 140], 'z': [170, 150, 98],
   'c': [132, 164, 80], 'g': [118, 96, 62], 'y': [118, 96, 62], 'p': [126, 112, 70], 'q': [126, 112, 70], 'n': [126, 112, 70], 'r': [134, 116, 84], 'e': [120, 128, 84], 'a': [112, 158, 80], 'j': [128, 158, 84], 'i': [60, 122, 170], 'l': [146, 152, 88], 'W': [146, 152, 88], 'N': [126, 112, 70], 'B': [150, 146, 104], 'V': [150, 146, 104], 'K': [150, 146, 104], 'H': [118, 164, 76], 'F': [132, 150, 80], 'I': [116, 166, 78] };
 // Land der roten Sonne: helleres, türkises Grün und hellgraue Berge
-const GROUND_SONNE = { '.': [128, 194, 164], 'd': [128, 194, 164], 'o': [136, 196, 166], 'v': [138, 196, 166], 'f': [84, 150, 124], 'h': [186, 192, 188], 'R': [122, 182, 168], 'w': [60, 132, 170], 'b': [60, 132, 170], 'u': [96, 164, 184] };
+const GROUND_SONNE = { 'S': [226, 214, 176], '.': [128, 194, 164], 'd': [128, 194, 164], 'o': [136, 196, 166], 'v': [138, 196, 166], 'f': [84, 150, 124], 'h': [186, 192, 188], 'R': [122, 182, 168], 'w': [60, 132, 170], 'b': [60, 132, 170], 'u': [96, 164, 184] };
 const groundOf = t => (STYLE === 'sonne' && GROUND_SONNE[t]) || GROUND[t];
-const SOFT = new Set(['.', 'f', 'h', 'v', 'd', 'z', 'o', 'c', 'a', 'j', 'l', 'W', 'I', 'H']), WET = new Set(['w', 'u', 'b', 'i']), ROADS = new Set(['d', 's', 'b', 't', 'k', 'y', 'n']);
+const SOFT = new Set(['S', '.', 'f', 'h', 'v', 'd', 'z', 'o', 'c', 'a', 'j', 'l', 'W', 'I', 'H']), WET = new Set(['w', 'u', 'b', 'i']), ROADS = new Set(['d', 's', 'b', 't', 'k', 'y', 'n']);
 const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 function landNoise(x, y) { return Math.sin(x * 0.021 + Math.sin(y * 0.017) * 2) * 0.5 + Math.sin(y * 0.026 - x * 0.011) * 0.5; }
 let WATER_HEX = [];
@@ -3872,6 +3884,7 @@ function buildTerrain() {
   for (const [c, r, k] of MAP_CARTS) { const p = center(c, r); drawLogLoad(g, p.x, p.y, k, hash(c, r, 3)); }
   for (const [c, r] of MAP_SIGNS) { const p = center(c, r); drawSignpost(g, p.x + 13, p.y + 6); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
+  if (MAP_GOALDECO) { const [kind, G] = MAP_GOALDECO, gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else boote(g, gp.x, gp.y); }
   // 6) Feines Raster
   g.strokeStyle = 'rgba(20,30,10,0.16)'; g.lineWidth = 1;
   for (const h of hexes) { const { x, y } = center(h.c, h.r); hexPath(g, x, y, R - 0.5); g.stroke(); }
@@ -3970,7 +3983,7 @@ function drawForest(g, h, x, y) {
       continue;
     }
     const s = 8 + k * 4;
-    if (STYLE === 'sonne') { if (k > 0.86) kirsche(g, tx, ty, s); else if (k > 0.4) kiefer(g, tx, ty, s); else bambus(g, tx, ty, s); continue; }
+    if (STYLE === 'sonne') { if (k > MAP_BLOOM) kirsche(g, tx, ty, s); else if (k > 0.4) kiefer(g, tx, ty, s); else bambus(g, tx, ty, s); continue; }
     shadowEll(g, tx + 3, ty + 1, s * 0.8, s * 0.32);
     if (k > 0.45) conifer(g, tx, ty, s); else linde(g, tx, ty, s);
   }
@@ -3986,7 +3999,7 @@ function drawMeadowEdge(g, h, x, y) {
     items.push([x + n.dx * d - n.dy * side, y + n.dy * d + n.dx * side + 4, k]);
   }
   items.sort((a, b) => a[1] - b[1]);
-  for (const [bx, by, k] of items) { if (k > 0.8) bush(g, bx, by, 5 + k * 2); else if (STYLE === 'sonne') { if (k > 0.7) kirsche(g, bx, by, 7 + k * 3); else bambus(g, bx, by, 7 + k * 3); } else birch(g, bx, by, 8 + k * 4); }
+  for (const [bx, by, k] of items) { if (k > 0.8) bush(g, bx, by, 5 + k * 2); else if (STYLE === 'sonne') { if (k > MAP_BLOOM - 0.16) kirsche(g, bx, by, 7 + k * 3); else bambus(g, bx, by, 7 + k * 3); } else birch(g, bx, by, 8 + k * 4); }
 }
 // ---------- Hügel: Einzelgänger, drei Brüder, Paare ----------
 function mound(g, bx, by, s, hgt = 1) {
@@ -6548,7 +6561,8 @@ Object.assign(FIG, FIG2);
 const SEELEN_MAT = {
   holz:  { b: '#8a5a32', l: '#c08a52', d: '#4a2c14' },
   stein: { b: '#8c8a84', l: '#c4c0b6', d: '#4e4b46' },
-  jade:  { b: '#3e9a6a', l: '#9ae0b4', d: '#1a5236' }
+  jade:  { b: '#3e9a6a', l: '#9ae0b4', d: '#1a5236' },
+  schatten: { b: '#3e3850', l: '#6e6688', d: '#1a1624' }
 };
 // Seelenloser: menschliche Gestalt aus Holz, Stein oder Jade, ohne Gesicht
 function tamashiFig(g, t, now, sword) {
@@ -6609,6 +6623,7 @@ function seelenlos(g, t, now, kind) {
 
   const M = SEELEN_MAT[kind], sw = Math.sin(now / 640) * 0.7;
   if (kind === 'stein') { g.scale(1.12, 1.12); }
+  if (kind === 'schatten') { g.scale(0.95, 0.95); const ph = now / 700; g.save(); for (let i = 0; i < 5; i++) { const k = (ph + i / 5) % 1; g.globalAlpha = 0.35 * (1 - k); ell(g, -6 - k * 10 + Math.sin(i * 2 + ph) * 2, -30 + i * 6 - k * 6, 3 + k * 5, 2 + k * 3, '#4a4060', 0); } g.restore(); }
   // Beine mit Kugelgelenken
   limb(g, [-3, -16, -4.5, -8, -6, -1.5], 3.8, M.d);
   limb(g, [3, -16, 4.5, -8, 5.5, -1.5], 3.8, M.b);
@@ -6641,6 +6656,7 @@ function seelenlos(g, t, now, kind) {
   ell(g, 1, -38, 4.7, 5.6, grad(g, -4, -44, 6, -33, M.l, M.d), 1);
   g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(1.5, -38.6); g.lineTo(5.6, -38.4); g.stroke();
   if (kind === 'jade') glow(g, '#7dffc4', 5, () => { ell(g, 4.4, -38.6, 0.9, 0.5, '#d8ffe8', 0); });
+  if (kind === 'schatten') glow(g, '#c58cff', 6, () => { ell(g, 4.2, -38.6, 1.3, 0.5, '#e8d0ff', 0); });
   hiL(g, [-2, -41.5, 0, -43.5, 3, -43], 0.45, 1);
   // Waffe und vorderer Arm
   if (kind === 'holz') {
@@ -6655,6 +6671,11 @@ function seelenlos(g, t, now, kind) {
     g.strokeStyle = 'rgba(40,38,34,0.7)'; g.lineWidth = 0.5; g.beginPath(); g.moveTo(11, -18); g.lineTo(12.5, -15); g.lineTo(12, -12); g.moveTo(15.5, -10); g.lineTo(17, -8); g.stroke();
     ell(g, 7.8, -24.6, 2.8, 1.1, '#4a4742', 0.7, 0.6);
     limb(g, [4, -29, 4, -23, 6.5, -25], 3.2, M.b); ell(g, 6.5, -25, 2, 2, M.l, 0.6);
+  } else if (kind === 'schatten') {
+    // Schattenspäher: kurzer, dunkler Dolch
+    shp(g, [8, -26, 9.6, -27.6, 17, -33 + sw, 15.6, -31 + sw], grad(g, 8, -27, 17, -33, '#8a84a0', '#2a2438'), 0.8);
+    ell(g, 8.6, -26.6, 1.8, 0.8, '#120e18', 0.5, -0.8);
+    limb(g, [4, -29, 6.5, -24, 8.5, -26.5], 2.6, M.b); ell(g, 8.4, -26.4, 1.6, 1.6, M.l, 0.6);
   } else {
     // Jade: leuchtendes Jadeschwert, aus dem grüne Blitze schlagen
     const p = 0.6 + 0.4 * Math.sin(now / 200);
@@ -6666,6 +6687,90 @@ function seelenlos(g, t, now, kind) {
   }
 }
 Object.assign(FIG, {
+  kitsune(g, t, now) {
+    // Kitsune: weiße Füchsin mit zwei Schwänzen und blauem Fuchsfeuer
+    g.save(); g.scale(1.1, 1.1);
+    const fur = '#f4ecdc', fd = '#cdb898', fl = '#ffffff', ac = '#d8542a';
+    const s = Math.sin(now / 300), w = Math.sin(now / 520);
+    // zwei Schwänze, hoch geschwungen, mit roten Spitzen
+    for (const [dx, k] of [[0, 1], [3, -1]]) {
+      blob(g, [-12, -17, -20 + dx, -22, -24 + dx, -32 + w * k, -20 + dx, -40 + w * k, -15 + dx, -37 + w * k, -17 + dx, -28, -11, -20], grad(g, -24, -40, -12, -17, fl, fd), 0.9);
+      ell(g, -18.5 + dx, -38.5 + w * k, 3, 2.4, ac, 0.6, -0.5);
+    }
+    // ferne Beine
+    limb(g, [-8, -14, -7 + s, -7, -8 + s * 1.5, -0.6], 2, fd);
+    limb(g, [7, -14, 7 - s, -7, 8 - s * 1.5, -0.6], 2, fd);
+    // Rumpf
+    blob(g, [-13, -15, -12, -22, -3, -22, 5, -24, 10, -21, 12, -16, 9, -12, 3, -12, -4, -13, -10, -12], grad(g, 0, -25, 0, -11, fl, fd), 1);
+    // Hals und Kopf, aufrecht und wachsam
+    blob(g, [6, -22, 11, -26, 14, -30, 16, -24, 13, -17, 9, -15], grad(g, 6, -30, 16, -15, fl, fur), 1);
+    shp(g, [11, -31, 16.5, -33, 20, -30.5, 25, -28.2, 24.6, -26.4, 19, -25.6, 14, -25.4, 11.5, -27.5], grad(g, 11, -33, 25, -25, fl, fur), 1);
+    shp(g, [12, -31, 12.6, -37.5, 15.6, -32.2], fur, 0.8); shp(g, [12.8, -31.6, 13.2, -35.6, 14.8, -32.4], ac, 0);
+    shp(g, [15.2, -32.4, 17.4, -38, 18.6, -31.8], fur, 0.8); shp(g, [15.9, -32.6, 17.2, -36.2, 17.8, -32.2], ac, 0);
+    ell(g, 24.6, -27.3, 0.9, 0.8, '#1a1210', 0);
+    // rote Gesichtszeichnung und schmale Augen
+    ln(g, 18.6, -30.2, 21.4, -29.4, ac, 0.9);
+    g.strokeStyle = '#1a1210'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(17.4, -29.6); g.quadraticCurveTo(18.6, -30.6, 19.8, -29.4); g.stroke();
+    // rote Schleife mit Glöckchen am Hals (Teamfarbe)
+    shp(g, [9.5, -23, 14.5, -25.5, 15, -23.6, 10.4, -21.2], t.main, 0.6); ell(g, 13.4, -21.4, 1.2, 1.2, '#e8c35a', 0.5);
+    // nahe Beine
+    limb(g, [-10, -14, -9 - s, -7, -10 - s * 1.5, -0.6], 2.4, fur);
+    limb(g, [9, -13, 10 + s, -7, 11 + s * 1.5, -0.6], 2.3, fur);
+    // blaues Fuchsfeuer schwebt neben ihr
+    const p = 0.6 + 0.4 * Math.sin(now / 160), fy = -46 + Math.sin(now / 400) * 2;
+    glow(g, '#7ad8ff', 10 * p, () => { blob(g, [2, fy + 6, -1.5, fy + 1, 1, fy - 4 - p * 2, 2.6, fy - 1, 4, fy - 5 - p, 5.5, fy + 1, 2, fy + 6], 'rgba(120,210,255,0.9)', 0); });
+    ell(g, 2.4, fy + 2.4, 1.4, 2, '#e8f8ff', 0);
+    g.restore();
+  },
+  tanuki(g, t, now) {
+    // Tanuki: rundlicher Marderhund auf zwei Beinen, Strohhut und Sakekrug
+    g.save(); g.scale(1.08, 1.08);
+    const fur = '#8a6440', fd = '#5a3e24', fl = '#b08a5e', cream = '#ead8b0';
+    const s = Math.sin(now / 380);
+    // geringelter Schwanz
+    blob(g, [-8, -10, -15, -10, -18, -5, -15, -2, -9, -5], grad(g, -18, -10, -8, -2, fl, fd), 0.9);
+    for (const x of [-15.5, -12.5]) ln(g, x, -9.5, x + 1, -2.6, '#3a2614', 1.1);
+    // Beine
+    limb(g, [-4, -8, -4.5 - s * 0.6, -0.8], 3.6, fd); limb(g, [4, -8, 4.5 + s * 0.6, -0.8], 3.6, fd);
+    ell(g, -5, -0.6, 3, 1.2, '#2a1c10', 0.6); ell(g, 5, -0.6, 3, 1.2, '#2a1c10', 0.6);
+    // runder Bauch
+    ell(g, 0, -17, 10, 11, grad(g, -8, -28, 8, -6, fl, fd), 1);
+    ell(g, 1.5, -15, 6.5, 7.5, cream, 0.6);
+    // Arm mit Sakekrug
+    ell(g, 10.5, -14, 3.6, 4.6, '#d8c8a0', 0.9); ell(g, 10.5, -19, 1.6, 1.3, '#d8c8a0', 0.8);
+    ln(g, 9, -16, 12, -16, t.main, 1.4);
+    limb(g, [6, -21, 9, -18, 10, -17], 3, fur);
+    // Kopf
+    ell(g, 1.5, -31, 7.5, 6.5, grad(g, -4, -37, 7, -25, fl, fur), 1);
+    ell(g, -3.5, -36.5, 2.4, 2.4, fd, 0.8); ell(g, 6.5, -36.5, 2.4, 2.4, fd, 0.8);
+    // dunkle Augenmaske
+    blob(g, [-3, -32, 0, -34.5, 3, -32, 5.5, -34.5, 8.6, -31.6, 6, -29.4, 3, -30.6, 0, -29.4, -3, -32], '#2e2014', 0);
+    ell(g, 0.5, -32, 0.9, 0.9, '#fff6e0', 0); ell(g, 5.6, -32, 0.9, 0.9, '#fff6e0', 0);
+    ell(g, 3.2, -28.3, 3.6, 2.4, cream, 0.6); ell(g, 3.4, -29.2, 1.2, 0.9, '#1a1210', 0);
+    g.strokeStyle = '#3a2614'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(1.6, -27.4); g.quadraticCurveTo(3.4, -26, 5.2, -27.4); g.stroke();
+    // Strohhut (Kasa)
+    shp(g, [-9, -36.5, 1.5, -44, 12, -36.5, 8, -35.4, -5, -35.4], grad(g, -9, -44, 12, -35, '#e8cc80', '#a88a44'), 1);
+    g.strokeStyle = 'rgba(110,84,36,0.6)'; g.lineWidth = 0.5; for (const k of [-5, -1.5, 4.5, 8]) { g.beginPath(); g.moveTo(1.5, -43.6); g.lineTo(k, -35.8); g.stroke(); }
+    // vorderer Arm winkt mit Blatt
+    limb(g, [-6, -21, -10, -25, -11, -30 + s], 2.8, fur);
+    shp(g, [-11, -30 + s, -14, -36 + s, -9, -38 + s, -9.5, -32 + s], '#6ab84a', 0.6);
+    g.restore();
+  },
+  onibi(g, t, now) {
+    // Irrlicht (Onibi): schwebendes blaues Geisterfeuer mit Gesicht
+    const f = Math.sin(now / 140), b = Math.sin(now / 520) * 2.5, y0 = -26 + b;
+    g.fillStyle = 'rgba(20,30,40,0.25)'; g.beginPath(); g.ellipse(0, -0.5, 7 - b * 0.4, 2, 0, 0, 7); g.fill();
+    glow(g, '#5ab8ff', 16, () => {
+      blob(g, [-9, y0 + 6, -11, y0 - 4, -6 + f, y0 - 12, -3, y0 - 9, 0 - f, y0 - 21, 3, y0 - 11, 7 + f, y0 - 15, 9, y0 - 4, 9, y0 + 6, 0, y0 + 11], 'rgba(70,160,255,0.85)', 0);
+    });
+    blob(g, [-6, y0 + 5, -7, y0 - 2, -3, y0 - 7, 0 - f * 0.6, y0 - 14, 3, y0 - 7, 6, y0 - 2, 6, y0 + 5, 0, y0 + 8], 'rgba(200,236,255,0.95)', 0);
+    // leere Augen und ein Grinsen
+    ell(g, -2.4, y0 - 1, 1.5, 2.1, '#123058', 0); ell(g, 3, y0 - 1, 1.5, 2.1, '#123058', 0);
+    g.strokeStyle = '#123058'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(-2.6, y0 + 3.6); g.quadraticCurveTo(0.3, y0 + 6, 3.4, y0 + 3.4); g.stroke();
+    // Funken
+    for (let i = 0; i < 3; i++) { const k = ((now / 900 + i / 3) % 1); ell(g, -6 + i * 6 + Math.sin(now / 200 + i) * 2, y0 - 10 - k * 18, 1.1 * (1 - k), 1.1 * (1 - k), 'rgba(170,220,255,0.9)', 0); }
+  },
+  spaeher(g, t, now) { seelenlos(g, t, now, 'schatten'); },
   kokoro(g, t, now) {
     halo(g, 1, -40, 15, now, { ring: '#b8322a', c1: 'rgba(255,214,190,0.9)', c2: 'rgba(226,96,72,0.45)' });
     // langer Pferdeschwanz weht zurück
@@ -6970,6 +7075,17 @@ function fordStones(g, h, x, y) {
     g.fillStyle = i % 2 ? '#d4d6d0' : '#b8bcb6'; g.beginPath(); g.ellipse(sx, sy, rr, rr * 0.7, 0, 0, 7); g.fill();
     g.strokeStyle = '#6a706c'; g.lineWidth = 0.8; g.stroke();
   }
+}
+function boote(g, x, y) {
+  // zwei alte Fischerboote am Strand
+  for (const [dx, dy, s, m] of [[-14, 2, 1.4, 1], [16, 13, 1.15, 0]]) {
+    const bx = x + dx, by = y + dy;
+    shadowEll(g, bx + 2, by + 2, 15 * s, 3.5 * s, 0.3);
+    shp(g, [bx - 16 * s, by - 5 * s, bx + 16 * s, by - 6 * s, bx + 11 * s, by + 1 * s, bx - 12 * s, by + 1.5 * s], grad(g, bx, by - 6, bx, by + 2, '#9a6a3c', '#5a3a1e'), 1);
+    ln(g, bx - 15 * s, by - 4 * s, bx + 15 * s, by - 5 * s, '#c89a5a', 0.8);
+    if (m) { ln(g, bx, by - 5, bx - 1, by - 26, '#5a3a1e', 1.6); shp(g, [bx - 1, by - 25, bx + 9, by - 20, bx + 8, by - 9, bx - 0.5, by - 8], '#e8dcc0', 0.8); }
+  }
+  g.strokeStyle = 'rgba(90,70,40,0.5)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - 4, y + 6); g.quadraticCurveTo(x + 2, y + 14, x + 8, y + 10); g.stroke();
 }
 function torii(g, x, y, explored) {
   const red = explored ? '#7a4a40' : '#c8322a', dk = explored ? '#3a2a26' : '#1e1410';
