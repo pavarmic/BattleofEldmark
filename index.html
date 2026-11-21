@@ -2826,8 +2826,8 @@ const SONNE_MISSIONS = [
    "fh.f.f.....fhdh.hh.hfhf.hh",
    "hf..hhhf.hfh.dhh.hhffh..fh",
    "ff..fh......d.......hh..ff",
-   "hff.h.f.....d......wwwwwww",
-   "fh..fh......d..wwww.hff..h",
+   "hff.h.f...v.d...v..wwwwwww",
+   "fh..fh.v....d..wwww.hff..h",
    "f..fh......wbwww.....hffhf",
    "h...wuwwwww.d......fff..fh",
    "wwwwwh.......d......hh.fhf",
@@ -2844,6 +2844,7 @@ const SONNE_MISSIONS = [
   "river": [[25, 4], [24, 4], [23, 4], [22, 4], [21, 4], [20, 4], [19, 4], [18, 5], [17, 5], [16, 5], [15, 5], [15, 6], [14, 6], [13, 6], [12, 6], [11, 6], [10, 7], [9, 7], [8, 7], [7, 7], [6, 7], [5, 7], [4, 7], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8]],
   "trails": [[[13, 0], [13, 1], [13, 2], [12, 3], [12, 4], [12, 5], [12, 6], [12, 7], [13, 8], [12, 9], [12, 10], [12, 11], [13, 12], [12, 13], [13, 14], [12, 15], [12, 16], [12, 17]]],
   "slots": [[12, 11], [13, 11], [11, 11], [13, 10], [11, 12], [13, 13], [11, 10], [14, 11], [12, 14], [14, 14], [12, 13], [13, 12]],
+  "lit": [[10, 4, 3], [16, 4, 3], [7, 5, 2], [12, 6, 1]],
   "joinUnits": ["tamashi"],
   "join": [[12, 12]],
   "enemy": [["holz", 9, 3], ["holz", 14, 3], ["holz", 17, 3], ["stein", 11, 5, "dormant"], ["stein", 13, 5, "dormant"]],
@@ -3001,6 +3002,8 @@ function setupBattle(M, roster) {
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false,
         fog: (M.tutorial || !M.skirmish) && M.fog !== false, seen: new Set(), vis: new Set(), fogSig: '' };
+  // Beleuchtete Häuser (M.lit = [[c, r, Radius], …]): ihr Laternenlicht hält die Umgebung dauerhaft sichtbar
+  if (M.lit) { S.scouted = new Set(); for (const [lc, lr, ld] of M.lit) for (const hx of HEX.values()) if (hexDist(lc, lr, hx.c, hx.r) <= ld) S.scouted.add(K(hx.c, hx.r)); }
   if (M.goal) for (const [c, r] of [[M.goal.c, M.goal.r], ...neighbors(M.goal.c, M.goal.r)]) S.seen.add(K(c, r));
   S.secrets = makeSecretsFor(M.secrets || [], M.secretDeck);
   if (M.skirmish) {
