@@ -718,6 +718,7 @@ function trigReady(T) {
   if (T.after && !(T.after in S.fired)) return false;
   if (T.skipIf && S[T.skipIf]) return false;
   if (T.cleared) return !alive(1).length;
+  if (T.captured) return !!S.captured[T.captured];
   if (T.turn && S.turn >= (T.after ? S.fired[T.after] + T.turn : T.turn)) return true;
   if (T.typeGone && !alive(1).some(u => u.type === T.typeGone)) return true;
   if (T.foeNear && alive(1).some(u => !u.dormant && (!T.foeType || u.type === T.foeType) && hexDist(u.c, u.r, T.foeNear[0], T.foeNear[1]) <= T.foeNear[2])) return true;
@@ -730,6 +731,11 @@ async function runTriggers() {
   for (const T of S.mission.triggers || []) {
     if (!trigReady(T)) continue;
     S.fired[T.id] = S.turn;
+    await fireEvent(T);
+  }
+}
+// Ein Ereignis abspielen (Auslöser oder eroberte Felder): Einheiten, Effekte, Text
+async function fireEvent(T) {
     let first = null;
     if (T.army) {
       const spots = []; const seen = new Set();
@@ -754,13 +760,35 @@ async function runTriggers() {
     }
     if (T.sanctuary) S.sanctuary = T.sanctuary;
     if (T.reveal) { const [rc, rr, rd] = T.reveal; S.scouted = S.scouted || new Set(); for (const hx of HEX.values()) if (hexDist(rc, rr, hx.c, hx.r) <= rd) S.scouted.add(K(hx.c, hx.r)); S.fogSig = ''; updateVision(); }
-    if (T.heal) for (const u of alive(0)) if (hexDist(u.c, u.r, T.near[0], T.near[1]) <= T.heal) { u.hp = maxHp(u); fxText(u, 'Erholt!', '#9cff9c'); }
+    if (T.heal) for (const u of alive(0)) if (hexDist(u.c, u.r, ...(T.near || [T.c, T.r])) <= T.heal) { u.hp = maxHp(u); fxText(u, 'Erholt!', '#9cff9c'); }
+    // Spur verlieren: Feinde dieses Typs stehen ein paar Runden ratlos herum
+    if (T.lose) { const [lt, n] = T.lose, ts = [].concat(lt); S.lost = S.lost || {}; for (const e of alive(1)) if (!e.guard && (lt === '*' || ts.includes(e.type))) { S.lost[e.type] = S.turn + n; fxText(e, '?', '#d8d4cc'); } for (const t of ts) if (t !== '*') S.lost[t] = S.turn + n; }
+    // Verschwinden: die ersten n Feinde dieses Typs lösen sich auf
+    if (T.vanish) { const [vt, n] = T.vanish; alive(1).filter(e => e.type === vt).slice(0, n).forEach(e => { fxText(e, 'Puff!', '#9ad8ff'); e.hp = 0; }); }
     if (T.look) ensureVisible(T.look[0], T.look[1]); else if (first) ensureVisible(first.c, first.r);
     log(T.log || T.title, T.spawn ? 'e' : 's');
     updateUI();
-    await showEvent(T.place, T.title, (T.id === 'einsiedler' ? `<img class="finale portrait tall" src="${EINSIEDLER_IMG}" alt="Der alte Einsiedler">` : '') + heroText(T.text), T.img ? { type: T.img, side: T.imgSide || 0 } : null, T.spawn || T.danger ? 'monster' : 'ally', true);
-  }
+    if (T.text) await showEvent(T.place, T.title, (T.id === 'einsiedler' ? `<img class="finale portrait tall" src="${EINSIEDLER_IMG}" alt="Der alte Einsiedler">` : '') + heroText(T.text), T.img ? { type: T.img, side: T.imgSide || 0 } : null, T.spawn || T.danger ? 'monster' : 'ally', true);
 }
+// ---------- Eroberungs-Felder (Banner) ----------
+const capAt = (c, r) => (S.mission.captures || []).find(f => f.c === c && f.r === r);
+const capsDone = () => { const L = S.mission.captures || []; return L.length > 0 && L.every(f => S.captured[f.id]); };
+async function tryCapture(u, quiet) {
+  const f = capAt(u.c, u.r);
+  if (!f || S.captured[f.id]) return false;
+  const miss = (f.needs || []).filter(id => !S.captured[id]).map(id => S.mission.captures.find(x => x.id === id).name);
+  if (miss.length) { if (!quiet) { log(`${f.name}: erst ${miss.join(' und ')} erobern!`, 'e'); fxText(u, 'Noch nicht!', '#ffd27a'); } return false; }
+  if (f.guarded && alive(1).some(e => e.guard)) { if (!quiet) { log(`${f.name} ist erst frei, wenn die Wächter gefallen sind!`, 'e'); fxText(u, 'Bewacht!', '#ffd27a'); } return false; }
+  S.captured[f.id] = S.turn; u.undo = null;
+  fxText(u, 'Erobert!', '#9cd0ff');
+  await fireEvent({ ...f, log: f.log || `${uname(u)} erobert ${f.name}!` });
+  if (S.mission.captureAll && capsDone()) S.goalReached = true;
+  // Steht schon jemand auf einem Banner, das jetzt frei wird? Dann gleich mit erobern.
+  else for (const p of alive(0)) if (await tryCapture(p, true)) break;
+  return true;
+}
+// Zu Rundenbeginn: Banner erobern, auf denen schon jemand wartet (z. B. wenn die Wächter inzwischen gefallen sind)
+async function capSweep() { if (S.mission.captures) for (const p of alive(0)) if (await tryCapture(p, true)) break; }
 async function reinforce(R) {
   let first = null;
   for (const [t, c, r] of R.units) {
@@ -2996,53 +3024,54 @@ const SONNE_MISSIONS = [
   "mist": true,
   "bloom": 0.96,
   "title": "Yume no mori",
-  "sub": "Flucht in den Traumwald",
+  "sub": "Den Feind abschütteln",
   "map": [
-   "hhffffffhhffhffffffffhhhfffhhffhhf",
-   "ffffffffffffffffffffffffffffffffff",
-   "ffffffffffffffffffffffffffff..ffff",
-   "ffff..ffffffff..fffffffffff...ffff",
-   "ffff...fffffff...fffffffffff..ffff",
-   "ffff..fff..fff..ffffff..ffffffffff",
-   "fffffffff...ffffffffff...fffffffff",
-   "fffffffff..fffffffffff..ffffffffff",
-   "ff...fffffffffffffffffffffffff...f",
-   "f...ddddddddffffffddddfffffff....f",
-   "f...d.ffffffddddddd...dddddff...dd",
-   "f....ffffffffffffff..fffffdff.dd.f",
-   "ff...fffffff..fffffffffffffdddd..f",
-   "fffffffffff...ffffffffff..ffffffff",
-   "ffffffffffff..ffffffffff...fffffff",
-   "fffffff..ffffffff..fffff..ffffffff",
-   "fffffff...fffffff...ffffffffffffff",
-   "fffffff..ffffffff..fffffffffffffff",
-   "ffffffffffffffffffffffffffffffffff",
-   "hhhfhffhfhhffffhfffhhfhfhfhhffhhhh"
+   "hhffffffhhffhffffffffhwhfffhhffhhf",
+   "ffffffffffffffffffffffwfffffffffff",
+   "ffffffffffffffffffffffwfffff..ffff",
+   "ffff..ffffffff..ffffffwffff...ffff",
+   "ffff...fffffff...fffffwfffff..ffff",
+   "ffff..fff..fff..ffffffw.ffffffffff",
+   "fffffffff...ffffffffffw..fffffffff",
+   "fffffffff..fffffffffffw.ffffffffff",
+   "ff...fffffffffffffffffwfffffff...f",
+   "f...ddddddddffffffddddwffffff....f",
+   "f...d.ffffffddddddd...uddddff...dd",
+   "f....ffffffffffffff..fwfffdff.dd.f",
+   "ff...fffffff..ffffffffwffffdddd..f",
+   "fffffffffff...fffffffwff..ffffffff",
+   "ffffffffffff..fffffffwff...fffffff",
+   "fffffff..ffffffff..fwfff..ffffffff",
+   "fffff.....fffffff...wfffffffffffff",
+   "fff.......fffffff..fwfffffffffffff",
+   "fff.......ffffffffffwfffffffffffff",
+   "hhhf.....hhffffhfffhwfhfhfhhffhhhh"
   ],
-  "trails": [[[33, 10], [32, 10], [31, 11], [30, 11], [30, 12], [29, 12], [28, 12], [27, 12], [26, 11], [26, 10], [25, 10], [24, 10], [23, 10], [22, 10], [21, 9], [20, 9], [19, 9], [18, 9], [18, 10], [17, 10], [16, 10], [15, 10], [14, 10], [13, 10], [12, 10], [11, 9], [10, 9], [9, 9], [8, 9], [7, 9], [6, 9], [5, 9], [4, 9], [4, 10]]],
+  "trails": [[[33, 10], [32, 10], [31, 11], [30, 11], [30, 12], [29, 12], [28, 12], [27, 12], [26, 11], [26, 10], [25, 10], [24, 10], [23, 10], [22, 10], [21, 9], [20, 9], [19, 9], [18, 9], [18, 10], [17, 10], [16, 10], [15, 10], [14, 10], [13, 10], [12, 10], [11, 9], [10, 9], [9, 9], [8, 9], [7, 9], [6, 9], [5, 9], [4, 9], [4, 10]], [[4, 10], [4, 11], [4, 12], [5, 13], [5, 14], [5, 15], [6, 16], [6, 17], [6, 18], [6, 19]]],
   "slots": [[31, 10], [32, 9], [31, 9], [32, 11], [31, 11], [30, 10], [32, 8], [30, 9], [30, 11], [31, 12], [32, 12], [31, 8]],
   "joinUnits": ["tamashi_k"],
   "join": [[32, 10]],
-  "enemy": [["onibi", 15, 6, "wild"], ["onibi", 21, 15, "wild"], ["onibi", 9, 13, "wild"], ["onibi", 24, 4, "wild"], ["holz", 18, 9, "wait"], ["holz", 8, 9, "wait"]],
+  "enemy": [["onibi", 15, 6, "wild"], ["onibi", 21, 15, "wild"], ["onibi", 9, 13, "wild"], ["onibi", 24, 4, "wild"], ["holz", 13, 14, "wait"], ["holz", 8, 9, "wait"]],
   "secrets": [{"c": 15, "r": 4, "name": "Fuchsbau", "kind": "hoehle"}, {"c": 18, "r": 16, "name": "Alte Zeder", "kind": "schrein"}, {"c": 8, "r": 16, "name": "Moosschrein", "kind": "schrein"}],
   "secretDeck": [{"kind": "ally", "unit": "kitsune", "text": "Zwischen den Wurzeln glimmen zwei Augen, dann ein blaues Flämmchen. Eine weiße Füchsin mit zwei Schwänzen tritt heraus: ein <b>Kitsune</b>, ein Fuchsgeist. Sie mustert {HERO} lange. „Du hast ein Herz, das brennt. Ich gehe ein Stück mit dir.“"}, {"kind": "ally", "unit": "tanuki", "text": "Im Farn raschelt es. Ein dicker <b>Tanuki</b> mit Strohhut und Sakekrug watschelt hervor und lacht: „Schatten in meinem Wald? Das gefällt mir gar nicht. Wer müde ist, dem helfe ich auf die Beine.“"}, {"kind": "monster", "unit": "onibi", "text": "Plötzlich schwebt ein blaues Licht hervor. Kein Glühwürmchen: ein <b>Irrlicht</b>, ein böser Waldgeist. Es kichert und stürzt sich auf euch!"}],
   "critters": [["reh", 23, 6], ["hase", 12, 13], ["fuchs", 25, 14], ["reh", 5, 4], ["hase", 28, 3], ["reh", 10, 6]],
-  "goal": {"c": 3, "r": 10, "name": "Fuchsschrein"},
-  "goalDeco": "torii",
   "foeLvl": 0,
   "foeUp": 0,
-  "intro": "Sie rennen. Hinter ihnen versinkt Kirisato in der Nacht, vor ihnen liegt der <b>Yume no mori</b>, der Traumwald. Die Alten sagen, wer dort schläft, träumt mit offenen Augen. Zwischen den Stämmen hängt Nebel, und fremde Lichter tanzen zwischen den Bäumen. Manche Lichter sind freundlich. Andere nicht.<br><br>{HERO} spürt es im Nacken: Etwas folgt ihnen. Tamashi trägt noch immer das Schwert mit der kristallklaren Klinge. Weit im Westen, so erzählt man, steht ein alter <b>Fuchsschrein</b>. Dort soll der Wald seine Gäste beschützen.",
-  "goalText": "Flieht durch den Traumwald zum Fuchsschrein im Westen. Tamashi darf nicht fallen.",
+  "intro": "Sie rennen. Hinter ihnen versinkt Kirisato in der Nacht, vor ihnen liegt der <b>Yume no mori</b>, der Traumwald. Zwischen den Stämmen hängt Nebel, und fremde Lichter tanzen zwischen den Bäumen. Manche Lichter sind freundlich. Andere nicht.<br><br>{HERO} spürt es im Nacken: Die Schatten des Kalten Königs sind ihnen auf den Fersen. Gegen so viele können sie nicht kämpfen, sie müssen den Feind <b>abschütteln</b>. Tamashi kennt einen Weg: durch den Bach, damit das Wasser die Spur verwischt, vorbei am alten <b>Fuchsschrein</b>, und dann nach Süden aus dem Wald hinaus, zur Nebelküste.",
+  "goalText": "Erobert die Banner: zuerst die Bachfurt und den Fuchsschrein, zuletzt den Waldrand im Süden. Tamashi darf nicht fallen.",
   "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 33, 6], ["spaeher", 33, 14], ["spaeher", 33, 10]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [31, 10], "place": "Am Waldrand", "title": "Schatten im Rücken", "log": "Drei Schattenspäher nehmen eure Spur auf!", "text": "Hinter euch, am Waldrand, lösen sich drei Gestalten aus der Dunkelheit. Sie haben keine Gesichter, nur glatte Masken, und um sie herum kräuselt sich Rauch. <b>Schattenspäher</b> des Kalten Königs. Sie sind schnell, und sie haben eure Spur.<br><br><small>Schattenspäher sind flink, aber nicht zäh. Lauft weiter, oder stellt euch ihnen.</small>"}, {"id": "nachschub", "after": "schatten", "turn": 3, "spawn": [["spaeher", 33, 8], ["holz", 33, 12]], "shout": "…", "img": "holz", "imgSide": 1, "place": "Im Traumwald", "title": "Sie geben nicht auf", "log": "Weitere Seelenlose folgen euch in den Wald!", "text": "Zwischen den Stämmen knackt Holz. Ein Holzkrieger stapft durch das Unterholz, und neben ihm huscht ein weiterer Schatten. Die Seelenlosen geben nicht auf."}],
-  "outro": "Am Fuchsschrein wird es still. Die Schatten bleiben zwischen den Bäumen stehen, als gäbe es eine Grenze, die sie nicht überschreiten dürfen. Tamashi sinkt auf die moosigen Stufen und atmet durch.<br><br>Dann flüstert eine Stimme aus dem Schrein, leise wie Wind in den Blättern: „Hier schützt euch der Wald. Aber nicht für lange. Folgt dem Bach nach Süden, bis ihr das Meer riecht. Am Meer gibt es Boote.“<br><br>{HERO} schaut die anderen an. Zum ersten Mal seit der Nacht der Laternen hat sie einen Plan.",
-  "reward": []
+  "outro": "Am Waldrand sinkt Tamashi ins nasse Gras und lacht leise, zum ersten Mal seit der Nacht der Laternen. Honoo zählt die Pfeile, Kokoro zählt die Freunde. Alle sind noch da.<br><br>Vor ihnen rauscht das Meer, unsichtbar im Nebel. Irgendwo dort unten an der <b>Nebelküste</b> gibt es Fischer und Boote. Und weiter draußen, so hat die Stimme im Schrein gesagt, liegt der Hafen der Träume.",
+  "reward": [],
+  "river": [[22, 0], [22, 1], [22, 2], [22, 3], [22, 4], [22, 5], [22, 6], [22, 7], [22, 8], [22, 9], [22, 10], [22, 11], [22, 12], [21, 13], [21, 14], [20, 15], [20, 16], [20, 17], [20, 18], [20, 19]],
+  "captureAll": true,
+  "captures": [{"id": "furt", "c": 22, "r": 10, "name": "Bachfurt", "lose": ["spaeher", 2], "img": "spaeher", "imgSide": 1, "place": "An der Bachfurt", "title": "Das Wasser nimmt die Spur mit", "text": "Das Wasser ist eiskalt und reicht bis an die Knie. {HERO} watet als Erste hinüber, die anderen folgen, Tamashi ganz zuletzt. Auf der anderen Seite schauen sie zurück.<br><br>Der Bach hat eure Spur mitgenommen. Wenn die Schattenspäher hier ankommen, schnüffeln sie ratlos am Ufer herum.<br><br><small>Zwei Runden lang finden die Schattenspäher eure Spur nicht. Weiter, zum Fuchsschrein!</small>"}, {"id": "schrein", "c": 3, "r": 10, "name": "Fuchsschrein", "deco": "torii", "vanish": ["spaeher", 2], "lose": ["spaeher", 2], "img": "kitsune", "place": "Am Fuchsschrein", "title": "Fuchsfeuer", "text": "Der alte Schrein ist von Moos überwachsen, die Fuchsfiguren aus Stein tragen rote Lätzchen. {HERO} legt eine Reiskugel auf die Stufen und verbeugt sich.<br><br>Da flammen zwischen den Bäumen blaue Lichter auf, eins nach dem anderen: <b>Fuchsfeuer</b>. Sie tanzen davon, nach Norden, weg von euch. Die Schatten folgen ihnen in den Nebel, und zwei von ihnen kommen nie zurück.<br><br>Eine leise Stimme aus dem Schrein: „Nach Süden. Am Waldrand beginnt die Nebelküste.“"}, {"id": "waldrand", "c": 6, "r": 18, "name": "Waldrand im Süden", "needs": ["furt", "schrein"], "place": "Am Waldrand", "title": "Die Nebelküste", "text": "Die Bäume werden lichter. Vor euch liegt eine graue Weite, und es riecht nach Salz und Tang. Der Nebel ist so dicht, dass man die eigenen Füße kaum sieht. Hinter euch bleibt es still. Keine Schatten mehr.<br><br>Ihr habt sie abgeschüttelt. Fürs Erste."}]
  },
  {
   "id": "s3",
   "style": "sonne",
   "bloom": 0.93,
-  "title": "Yume no Kaigan",
-  "sub": "Der Weg zum Meer",
+  "title": "Die Nebelküste",
+  "sub": "Ruder, Dunkelheit und ein Boot",
   "map": [
    "ffffffffffffffffd.ffffffffffffff",
    "fffffffffffffffd..ffffffffffffff",
@@ -3070,19 +3099,20 @@ const SONNE_MISSIONS = [
   "slots": [[16, 1], [17, 0], [16, 0], [17, 2], [15, 1], [16, 2], [15, 2], [18, 1], [18, 0], [14, 2], [15, 0], [18, 2]],
   "joinUnits": ["tamashi_k"],
   "join": [[17, 1]],
-  "enemy": [["holz", 8, 5, "wait"], ["holz", 11, 10, "wait"], ["holz", 20, 12, "wait"], ["onibi", 25, 6, "wild"], ["onibi", 5, 12, "wild"], ["onibi", 27, 11, "wild"], ["stein", 15, 16, "guard"], ["stein", 19, 16, "guard"]],
-  "secrets": [{"c": 7, "r": 5, "name": "Verlassene Hütte", "kind": "hoehle"}, {"c": 21, "r": 12, "name": "Kleiner Schrein", "kind": "schrein"}, {"c": 24, "r": 6, "name": "Moosige Steinlaterne", "kind": "schrein"}],
+  "enemy": [["holz", 8, 5, "wait"], ["holz", 11, 10, "wait"], ["onibi", 25, 6, "wild"], ["onibi", 27, 11, "wild"], ["stein", 15, 16, "guard"], ["stein", 19, 16, "guard"]],
+  "secrets": [{"c": 7, "r": 5, "name": "Verlassene Köhlerhütte", "kind": "hoehle"}, {"c": 21, "r": 12, "name": "Kleiner Schrein", "kind": "schrein"}, {"c": 24, "r": 6, "name": "Moosige Steinlaterne", "kind": "schrein"}],
   "secretDeck": [{"kind": "ally", "unit": "yumi", "text": "In der verlassenen Hütte sitzt eine junge Jägerin und spannt blitzschnell ihren langen Bogen. Dann erkennt sie {HERO} und senkt ihn. „Ihr kommt aus Kirisato? Die Schatten haben auch meinen Großvater geholt. Ich komme mit euch.“"}, {"kind": "monster", "unit": "onibi", "text": "Ein blaues Licht flackert auf und kichert. Ein <b>Irrlicht</b>! Böse Waldgeister lieben es, Wanderer in die Irre zu führen."}, {"kind": "leer", "text": "Nur Moos, ein paar Muscheln als Opfergabe und der Geruch von Salz. Das Meer ist nicht mehr weit."}],
   "critters": [["reh", 4, 13], ["hase", 22, 11], ["fuchs", 27, 5], ["reh", 12, 4]],
-  "goal": {"c": 17, "r": 17, "name": "Strand von Yume"},
-  "goalDeco": "boote",
   "foeLvl": 0,
   "foeUp": 0,
-  "intro": "Drei Tage folgen sie dem Bach durch den Traumwald. Nachts schlafen sie kaum, denn die Schatten sind nie weit. Am Morgen des vierten Tages riecht die Luft nach Salz. Hinter dem Wald liegt die Küste, der <b>Yume no Kaigan</b>. Dort, so hat die Stimme im Schrein gesagt, liegen Boote am Strand.<br><br>Doch zwischen Wald und Meer warten die Seelenlosen. Und unten am Strand stehen zwei Steinkrieger, reglos wie Felsen in der Brandung.",
-  "goalText": "Kämpft euch durch den Wald zum Strand. Der Strand ist erst frei, wenn beide Steinkrieger gefallen sind. Tamashi darf nicht fallen.",
-  "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 16, 0], ["spaeher", 13, 1]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [16, 1], "place": "Im Traumwald", "title": "Die Schatten sind wieder da", "log": "Schattenspäher folgen euch aus dem Wald!", "text": "Hinter euch kräuselt sich Rauch zwischen den Stämmen. Die Schattenspäher haben eure Spur wieder gefunden. Schnell, zum Meer!"}, {"id": "kueste", "near": [12, 11], "d": 2, "reveal": [17, 16, 6], "look": [17, 16], "place": "Am Waldrand", "title": "Das Meer!", "log": "Ihr seht das Meer und den Strand von Yume.", "text": "Die Bäume werden lichter, und plötzlich liegt es vor euch: das Meer, grau und weit, mit weißen Schaumkronen. Am Strand liegen zwei alte Fischerboote. Doch davor stehen die beiden Steinkrieger und rühren sich nicht.<br><br><small>Pfeile prallen an Stein ab. Netze und Spitzhacken helfen.</small>"}],
-  "outro": "Der letzte Steinkrieger zerfällt am Strand zu Kies, und die Wellen spülen ihn fort. Hinter euch bleiben die Schatten am Waldrand stehen und starren aufs Meer. Wasser mögen sie nicht.<br><br>Am Horizont blinken Lichter. Ein alter Fischer, der sich in den Dünen versteckt hatte, zeigt hinüber: „Das ist Yumenoshima, der Hafen der Träume. Früher kamen dort jeden Tag Boote an. Jetzt gehört er den Seelenlosen.“<br><br>{HERO} schaut zu Tamashi, dann zu Honoo. „Dann holen wir ihn uns zurück.“",
-  "reward": []
+  "intro": "Hinter dem Traumwald fällt das Land zum Meer hin ab. Hier beginnt die <b>Nebelküste</b>. Der Nebel kriecht vom Wasser die Hänge hinauf, und man hört die Wellen, lange bevor man sie sieht.<br><br>Am Strand liegen Boote, bewacht von zwei Steinkriegern. Doch ein Boot allein bringt euch nicht weit: Ihr braucht Ruder, und ihr braucht Dunkelheit. Im Westen steht eine <b>Fischerhütte</b>, im Osten ein <b>alter Leuchtturm</b>, auf dem ein kaltes blaues Feuer brennt. Solange es brennt, sieht der Feind jedes Boot.",
+  "goalText": "Erobert die Fischerhütte und den alten Leuchtturm, dann den Bootssteg. Der Steg ist erst frei, wenn beide Steinkrieger gefallen sind. Tamashi darf nicht fallen.",
+  "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 16, 0], ["spaeher", 13, 1]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [16, 1], "place": "Im Traumwald", "title": "Die Schatten sind wieder da", "log": "Schattenspäher folgen euch aus dem Wald!", "text": "Hinter euch kräuselt sich Rauch zwischen den Stämmen. Die Schattenspäher haben eure Spur wieder gefunden. Schnell, zum Meer!"}, {"id": "kueste", "near": [12, 11], "d": 2, "reveal": [17, 16, 6], "look": [17, 16], "place": "Am Waldrand", "title": "Die Nebelküste", "log": "Ihr seht die Küste, die Boote und den Leuchtturm.", "text": "Die Bäume werden lichter, und unter euch liegt die Küste, grau und weit. Am Bootssteg dümpeln zwei alte Fischerboote. Davor stehen die beiden Steinkrieger und rühren sich nicht. Weit im Osten flackert das blaue Feuer des Leuchtturms durch den Nebel.<br><br><small>Pfeile prallen an Stein ab. Netze und Spitzhacken helfen.</small>"}],
+  "outro": "Der letzte Steinkrieger zerfällt am Strand zu Kies, und die Wellen spülen ihn fort. Dann legen die Boote ab. Niemand spricht. Nur die Ruder tauchen ein, immer wieder, und der Nebel schluckt jedes Geräusch.<br><br>Nach einer Stunde blinken vor ihnen Lichter auf: <b>Yumenoshima</b>, der Hafen der Träume. Jirō flüstert: „Früher kamen hier jeden Tag Boote an. Jetzt gehört er den Seelenlosen.“<br><br>Die Boote gleiten lautlos an die Kaimauer. {HERO} schaut zu Tamashi, dann zu Honoo. „Dann holen wir ihn uns zurück.“",
+  "reward": [],
+  "mist": true,
+  "captureAll": true,
+  "captures": [{"id": "huette", "c": 8, "r": 14, "name": "Fischerhütte", "deco": "huette", "heal": 3, "allies": [["netzbauer", 8, 14]], "place": "In der Fischerhütte", "title": "Der alte Fischer", "text": "In der Hütte riecht es nach Rauch und getrocknetem Fisch. Ein alter Mann hockt hinter einem Netz und hält ein Messer hoch. Dann sieht er Tamashi. „Du bist doch der Junge vom Laternenfest!“<br><br>Er heißt <b>Jirō</b>, und die Seelenlosen haben ihm alles genommen, nur nicht seine Ruder. „Nehmt sie. Mein Boot liegt am Steg. Aber solange das Feuer im alten Leuchtturm brennt, sehen sie jedes Boot auf dem Wasser.“ Dann greift er nach seinem Netz. „Und ich komme mit.“<br><br><small>Jirō, ein Netzfischer, schließt sich euch an. Wer nah an der Hütte steht, wird ganz geheilt.</small>"}, {"id": "turm", "c": 24, "r": 15, "name": "Alter Leuchtturm", "deco": "leuchtturm", "lose": ["*", 3], "place": "Am alten Leuchtturm", "title": "Das Feuer erlischt", "text": "Oben im Leuchtturm brennt ein kaltes, blaues Feuer. Honoo kippt einen Eimer Meerwasser hinein, und es zischt, dann ist es dunkel. Nur noch Nebel und das Rauschen der Wellen.<br><br>Unten am Waldrand schreien die Schattenspäher auf, und die Irrlichter flackern ratlos hin und her. Im dunklen Nebel finden sie euch nicht mehr.<br><br><small>Drei Runden lang irren die Feinde umher (nur die Steinkrieger am Steg bleiben wachsam).</small>"}, {"id": "steg", "c": 17, "r": 17, "name": "Bootssteg", "deco": "boote", "needs": ["huette", "turm"], "guarded": true, "place": "Am Bootssteg", "title": "Leinen los", "text": "Jirōs Boot ist alt, aber dicht. Kokoro, Honoo und Tamashi klettern hinein, die Freunde in das zweite Boot daneben. Die Ruder tauchen leise ins schwarze Wasser."}]
  }
 ];
 
@@ -3127,16 +3157,16 @@ function makeSecretsFor(spots, fixed) {
   shuffle(deck);
   return spots.map((sp, i) => ({ ...sp, outcome: deck[i % deck.length], explored: false }));
 }
-let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = null, LANTERNS = [];
+let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = M.goalDeco && M.goal ? [M.goalDeco, M.goal] : null;
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f]));
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
-        busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false,
+        busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false, captured: {},
         fog: (M.tutorial || !M.skirmish) && M.fog !== false, seen: new Set(), vis: new Set(), fogSig: '' };
   // Beleuchtete Häuser (M.lit = [[c, r, Radius], …]): ihr Laternenlicht hält die Umgebung dauerhaft sichtbar
   if (M.lit) { S.scouted = new Set(); for (const [lc, lr, ld] of M.lit) for (const hx of HEX.values()) if (hexDist(lc, lr, hx.c, hx.r) <= ld) S.scouted.add(K(hx.c, hx.r)); }
-  if (M.goal) for (const [c, r] of [[M.goal.c, M.goal.r], ...neighbors(M.goal.c, M.goal.r)]) S.seen.add(K(c, r));
+  for (const G of (M.goal ? [M.goal] : []).concat(M.captures || [])) for (const [c, r] of [[G.c, G.r], ...neighbors(G.c, G.r)]) S.seen.add(K(c, r));
   S.secrets = makeSecretsFor(M.secrets || [], M.secretDeck);
   if (M.skirmish) {
     S.fired = {};
@@ -3698,6 +3728,7 @@ async function endTurn() {
   S.phase = 'player'; S.busy = false;
   startSide(0);
   log(`— Runde ${S.turn} —`, 's');
+  await capSweep(); if (checkEnd()) return;
   if (S.mission.tutorial) { tut('runde2'); if (alive(0).some(u => u.hp < maxHp(u))) tut('wunden'); if (S.turn >= 3 && S.secrets.some(s => !s.explored)) tut('geheim'); }
   showBanner('Du bist am Zug!', `Runde ${S.turn}`);
   const firstReady = alive(0)[0]; if (firstReady) ensureVisible(firstReady.c, firstReady.r);
@@ -3710,7 +3741,7 @@ function checkEnd() {
   let res = null;
   const protLost = S.units.some(u => u.side === 0 && TYPES[u.type].protect && u.hp <= 0);
   if (!p || !heroAlive || protLost) res = false;
-  else if ((!e && !(M.triggers || []).some(T => T.spawn && !(S.fired && T.id in S.fired))) || S.goalReached) res = true;
+  else if ((!e && !M.captureAll && !(M.triggers || []).some(T => T.spawn && !(S.fired && T.id in S.fired))) || S.goalReached) res = true;
   if (res === null) return false;
   S.phase = 'over'; S.busy = false; deselect();
   log(res ? 'Sieg!' : 'Niederlage …', 's');
@@ -3744,7 +3775,7 @@ async function aiAct(u) {
   const reach = reachable(u);
   if (u.waitR && alive(0).some(p => hexDist(p.c, p.r, u.c, u.r) <= u.waitR)) u.waitR = 0;
   const guardLeash = u.guard && !u.tower ? (u.type === 'aschfuerst' ? 1 : u.alert ? 3 : 2) : 0;
-  const holding = (u.guard && !guardLeash) || (u.sally && !GATE_OPEN) || u.waitR;
+  const holding = (u.guard && !guardLeash) || (u.sally && !GATE_OPEN) || u.waitR || (S.lost && S.lost[u.type] > S.turn);
   const post = u.post || [u.c, u.r];
   let cands = holding ? [[sk, reach.get(sk)]] : standable(u, reach);
   if (guardLeash) cands = cands.filter(([k, n]) => hexDist(n.c, n.r, post[0], post[1]) <= guardLeash);
@@ -3813,6 +3844,7 @@ async function moveUnit(u, reach, k) {
   if (u.side === 0 && terr(u.c, u.r) === 'u' && S.mission && S.mission.wolves && !S.wolvesCalled) await callWolves();
   if (u.side === 0 && terr(u.c, u.r) === 'c' && S.mission && S.mission.gate && !GATE_OPEN) await openGate();
   if (u.side === 0 && terr(u.c, u.r) === 'j' && S.mission && S.mission.sawmill && !S.sawmillDone) await visitSawmill(u);
+  if (u.side === 0 && S.mission && S.mission.captures) await tryCapture(u);
   if (u.side === 0 && S.mission && S.mission.triggers) await runTriggers();
   if (u.side === 0 && S.mission.tutorial) { tut('moved'); tut('nebel'); const tt = terr(u.c, u.r); if (tt === 'f') tut('wald'); if (tt === 'h') tut('huegel'); if (tt === 'v') tut('dorf'); }
   const G = S.mission && S.mission.goal;
@@ -4141,7 +4173,7 @@ function buildTerrain0() {
   for (const [c, r] of MAP_SIGNS) { const p = center(c, r); drawSignpost(g, p.x + 13, p.y + 6); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
   if (STYLE === 'sonne') drawSeaBoats(g);
-  if (MAP_GOALDECO) { const [kind, G] = MAP_GOALDECO, gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else boote(g, gp.x, gp.y); }
+  for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else boote(g, gp.x, gp.y); }
   // 6) Feines Raster
   g.strokeStyle = 'rgba(20,30,10,0.16)'; g.lineWidth = 1;
   for (const h of hexes) { const { x, y } = center(h.c, h.r); hexPath(g, x, y, R - 0.5); g.stroke(); }
@@ -7538,6 +7570,44 @@ function boote(g, x, y) {
   }
   g.strokeStyle = 'rgba(90,70,40,0.5)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - 4, y + 6); g.quadraticCurveTo(x + 2, y + 14, x + 8, y + 10); g.stroke();
 }
+// Banner auf Eroberungs-Feldern: golden = frei, blau = erobert
+function drawBanner(f, p, done, now) {
+  const wv = Math.sin(now / 260 + f.c) * 2.5, x = p.x + R * 0.38, y = p.y + R * 0.35, hgt = R * 1.05;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, 6, 2.5, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - hgt); ctx.stroke();
+  const col = done ? '#3f7fd6' : '#e8b63a', top = y - hgt + 2, w = R * 0.62, h = R * 0.42;
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, top);
+  ctx.quadraticCurveTo(x + w / 2, top - wv, x + w, top + wv * 0.5); ctx.lineTo(x + w * 0.82, top + h / 2 + wv * 0.3); ctx.lineTo(x + w, top + h + wv * 0.5);
+  ctx.quadraticCurveTo(x + w / 2, top + h - wv, x, top + h); ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.stroke();
+  ctx.fillStyle = done ? '#e8f2ff' : '#7a2a12'; ctx.beginPath(); ctx.arc(x + w * 0.38, top + h / 2, h * 0.22, 0, 7); ctx.fill();
+  if (!done) { const pl = 0.5 + 0.5 * Math.sin(now / 300); hexPath(ctx, p.x, p.y, R - 4); ctx.lineWidth = 2; ctx.strokeStyle = `rgba(255,214,110,${0.25 + 0.4 * pl})`; ctx.stroke(); }
+  ctx.font = 'bold 12px Georgia, serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+  ctx.strokeText(f.name, p.x, p.y - R + 2); ctx.fillStyle = done ? '#a8d0ff' : '#ffe27a'; ctx.fillText(f.name, p.x, p.y - R + 2);
+  ctx.restore();
+}
+function leuchtturm(g, x, y) {
+  g.save(); g.translate(x - 4, y + 10); g.scale(1.45, 1.45);
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(0, 2, 14, 5, 0, 0, 7); g.fill();
+  g.fillStyle = '#8a8478'; g.beginPath(); g.moveTo(-12, 2); g.lineTo(12, 2); g.lineTo(8, -6); g.lineTo(-8, -6); g.closePath(); g.fill();
+  g.fillStyle = '#ece4d4'; g.beginPath(); g.moveTo(-7, -6); g.lineTo(7, -6); g.lineTo(4.5, -38); g.lineTo(-4.5, -38); g.closePath(); g.fill();
+  g.fillStyle = '#b8402e'; for (const yy of [-16, -29]) { g.beginPath(); g.moveTo(-6.2 + (yy + 6) * -0.08, yy); g.lineTo(6.2 + (yy + 6) * 0.08, yy); g.lineTo(5.6 + (yy + 2) * 0.08, yy + 5); g.lineTo(-5.6 - (yy + 2) * 0.08, yy + 5); g.closePath(); g.fill(); }
+  g.fillStyle = '#3a3a40'; g.fillRect(-6, -40, 12, 3); g.fillStyle = '#5a5248'; g.fillRect(-4, -47, 8, 7);
+  g.fillStyle = '#2e2a26'; g.beginPath(); g.moveTo(-6, -47); g.lineTo(0, -53); g.lineTo(6, -47); g.closePath(); g.fill();
+  g.restore();
+}
+function fischerhuette(g, x, y) {
+  g.save(); g.translate(x - 2, y + 8); g.scale(1.2, 1.2);
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(0, 2, 18, 5, 0, 0, 7); g.fill();
+  g.fillStyle = '#6e5238'; g.fillRect(-13, -12, 26, 14);
+  g.fillStyle = '#2a1e14'; g.fillRect(-3, -8, 6, 10);
+  g.fillStyle = '#8c7a52'; g.beginPath(); g.moveTo(-17, -10); g.lineTo(0, -24); g.lineTo(17, -10); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(60,44,24,.6)'; g.lineWidth = 1; for (let i = -12; i <= 12; i += 4) { g.beginPath(); g.moveTo(i * 0.4, -22); g.lineTo(i, -11); g.stroke(); }
+  g.strokeStyle = '#4a3a2a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(15, 2); g.lineTo(15, -12); g.moveTo(21, 2); g.lineTo(21, -12); g.stroke();
+  g.strokeStyle = 'rgba(200,190,160,.7)'; g.lineWidth = 0.7; for (let i = -11; i < 2; i += 3) { g.beginPath(); g.moveTo(15, i); g.lineTo(21, i + 1.5); g.stroke(); }
+  g.restore();
+}
 function torii(g, x, y, explored) {
   const red = explored ? '#7a4a40' : '#c8322a', dk = explored ? '#3a2a26' : '#1e1410';
   shadowEll(g, x + 3, y + 8, 15, 4, 0.3);
@@ -7733,6 +7803,7 @@ function render(now) {
     ctx.font = 'bold 13px Georgia, serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#000';
     ctx.strokeText('⚑ ' + G.name, gp.x, gp.y - R + 2); ctx.fillStyle = '#ffe27a'; ctx.fillText('⚑ ' + G.name, gp.x, gp.y - R + 2);
   }
+  for (const f of S.mission.captures || []) { const fp = center(f.c, f.r); if (inView(fp.x, fp.y)) drawBanner(f, fp, !!S.captured[f.id], now); }
   const sel = S.sel;
   // Bewegungsbereich
   if (sel && S.reach && !S.busy) {
@@ -7919,6 +7990,8 @@ function updateUI() {
     const sec = secretAt(hov.c, hov.r);
     const G = S.mission.goal;
     if (G && G.c === hov.c && G.r === hov.r) html += `<div class="terrain" style="color:#ffe27a">⚑ Ziel: <b>${G.name}</b> · Zieh eine Einheit hierher, um es zu erobern!</div>`;
+    const cf = capAt(hov.c, hov.r);
+    if (cf) html += `<div class="terrain" style="color:${S.captured[cf.id] ? '#9cd0ff' : '#ffe27a'}">⚐ Banner: <b>${cf.name}</b> · ${S.captured[cf.id] ? 'erobert' : 'zieh eine Einheit hierher, um es zu erobern!'}${cf.needs && !S.captured[cf.id] ? ' (erst ' + cf.needs.map(id => S.mission.captures.find(x => x.id === id).name).join(' und ') + ')' : ''}</div>`;
     if (sec) html += `<div class="terrain" style="color:#d8b8ff">✦ Geheimer Ort: <b>${sec.name}</b> · ${sec.explored ? 'bereits erkundet' : 'unerforscht – zieh eine Einheit hierher!'}</div>`;
   }
   info.innerHTML = html;
