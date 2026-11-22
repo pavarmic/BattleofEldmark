@@ -3108,7 +3108,7 @@ const SONNE_MISSIONS = [
   "foeUp": 0,
   "intro": "Hinter dem Traumwald fällt das Land zum Meer hin ab. Hier beginnt die <b>Nebelküste</b>. Der Nebel kriecht vom Wasser die Hänge hinauf, und man hört die Wellen, lange bevor man sie sieht.<br><br>Am Strand liegen Boote, bewacht von zwei Steinkriegern. Doch ein Boot allein bringt euch nicht weit: Ihr braucht Ruder, und ihr braucht Dunkelheit. Im Westen steht eine <b>Fischerhütte</b>, im Osten ein <b>alter Leuchtturm</b>, auf dem ein kaltes blaues Feuer brennt. Solange es brennt, sieht der Feind jedes Boot.",
   "goalText": "Erobert die Fischerhütte und den alten Leuchtturm, dann den Bootssteg. Der Steg ist erst frei, wenn beide Steinkrieger gefallen sind. Tamashi darf nicht fallen.",
-  "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 16, 0], ["spaeher", 13, 1]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [16, 1], "place": "Im Traumwald", "title": "Die Schatten sind wieder da", "log": "Schattenspäher folgen euch aus dem Wald!", "text": "Hinter euch kräuselt sich Rauch zwischen den Stämmen. Die Schattenspäher haben eure Spur wieder gefunden. Schnell, zum Meer!"}, {"id": "kueste", "near": [12, 11], "d": 2, "reveal": [17, 16, 6], "look": [17, 16], "place": "Am Waldrand", "title": "Die Nebelküste", "log": "Ihr seht die Küste, die Boote und den Leuchtturm.", "text": "Die Bäume werden lichter, und unter euch liegt die Küste, grau und weit. Am Bootssteg dümpeln zwei alte Fischerboote. Davor stehen die beiden Steinkrieger und rühren sich nicht. Weit im Osten flackert das blaue Feuer des Leuchtturms durch den Nebel.<br><br><small>Pfeile prallen an Stein ab. Netze und Spitzhacken helfen.</small>"}],
+  "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 16, 0], ["spaeher", 13, 1]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [16, 1], "place": "Im Traumwald", "title": "Die Schatten sind wieder da", "log": "Schattenspäher folgen euch aus dem Wald!", "text": "Hinter euch kräuselt sich Rauch zwischen den Stämmen. Die Schattenspäher haben eure Spur wieder gefunden. Schnell, zum Meer!"}, {"id": "kueste", "near": [12, 11], "d": 2, "look": [17, 16], "place": "Am Waldrand", "title": "Die Nebelküste", "log": "Ihr seht die Küste, die Boote und den Leuchtturm.", "text": "Die Bäume werden lichter, und unter euch liegt die Küste, grau und weit. Am Bootssteg dümpeln zwei alte Fischerboote. Irgendwo davor stehen die beiden Steinkrieger, doch der Nebel ist so dicht, dass man sie nicht sieht. Weit im Osten flackert das blaue Feuer des Leuchtturms durch den Nebel.<br><br><small>Im Nebel seht ihr nur 2 Felder weit. Pfeile prallen an Stein ab, Netze und Spitzhacken helfen.</small>"}],
   "outro": "Der letzte Steinkrieger zerfällt am Strand zu Kies, und die Wellen spülen ihn fort. Dann legen die Boote ab. Niemand spricht. Nur die Ruder tauchen ein, immer wieder, und der Nebel schluckt jedes Geräusch.<br><br>Nach einer Stunde blinken vor ihnen Lichter auf: <b>Yumenoshima</b>, der Hafen der Träume. Jirō flüstert: „Früher kamen hier jeden Tag Boote an. Jetzt gehört er den Seelenlosen.“<br><br>Die Boote gleiten lautlos an die Kaimauer. {HERO} schaut zu Tamashi, dann zu Honoo. „Dann holen wir ihn uns zurück.“",
   "reward": [],
   "mist": true,
@@ -3158,7 +3158,7 @@ function makeSecretsFor(spots, fixed) {
   shuffle(deck);
   return spots.map((sp, i) => ({ ...sp, outcome: deck[i % deck.length], explored: false }));
 }
-let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], MAP_SEAMIST = false, LANTERNS = [];
+let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], MAP_SEAMIST = false, FOGZONE = new Set(), LANTERNS = [];
 function setupBattle(M, roster) {
   STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_SEAMIST = !!M.seaMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f]));
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
@@ -3435,14 +3435,14 @@ const CAT_OF = { held: 'anf', aschfuerst: 'anf', miliz: 'plaenk', dryade: 'plaen
 const catOf = type => CAT_OF[type] || 'schwer';
 // Nebel des Krieges: leichte Späher sehen weit, schwere Truppen kurz
 const SIGHT = { plaenk: 5, reiter: 5, flieger: 6, magier: 4, bogen: 4, anf: 4, schwer: 3, belag: 3, monster: 3 };
-function sightOf(u) { const t = terr(u.c, u.r); return (SIGHT[catOf(u.type)] || 3) + (t === 'h' || t === 'k' || t === 'l' ? 1 : 0); }
+function sightOf(u) { const t = terr(u.c, u.r); return Math.max(2, (SIGHT[catOf(u.type)] || 3) + (t === 'h' || t === 'k' || t === 'l' ? 1 : 0) - (FOGZONE.has(K(u.c, u.r)) ? 1 : 0)); }
 function updateVision() {
   if (!S || !S.fog) return;
   const me = alive(0), sig = me.map(u => u.c + ',' + u.r + u.type).join('|');
   if (sig === S.fogSig) return;
   S.fogSig = sig; S.vis = new Set(S.scouted || []);
   for (const k of S.vis) S.seen.add(k);
-  for (const h of HEX.values()) for (const u of me) if (hexDist(u.c, u.r, h.c, h.r) <= sightOf(u)) { const k = K(h.c, h.r); S.vis.add(k); S.seen.add(k); break; }
+  for (const h of HEX.values()) for (const u of me) if (hexDist(u.c, u.r, h.c, h.r) <= (FOGZONE.has(K(h.c, h.r)) ? Math.min(2, sightOf(u)) : sightOf(u))) { const k = K(h.c, h.r); S.vis.add(k); S.seen.add(k); break; }
 }
 function shown(u) {
   if (!S.fog || u.side === 0) return true;
@@ -4514,13 +4514,17 @@ function buildAmbient() {
   const clouds = [];
   for (let i = 0; i < 4; i++) clouds.push({ y: H * (0.12 + i * 0.24) + (Math.random() - 0.5) * 60, off: Math.random() * (W + 800), sp: 5 + Math.random() * 5, w: 340 + Math.random() * 220 });
   // Küstennebel (M.seaMist): dichte Schwaden über Strand, Wasser und Waldsaum
-  const sea = [];
+  const sea = []; FOGZONE = new Set();
   if (MAP_SEAMIST) for (const h of HEX.values()) {
-    const coast = h.t === 'S' || (h.t === 'w' && neighbors(h.c, h.r).some(([nc, nr]) => HEX.get(K(nc, nr)).t !== 'w')) || (h.t !== 'w' && neighbors(h.c, h.r).some(([nc, nr]) => HEX.get(K(nc, nr)).t === 'S'));
-    const k = hash(h.c, h.r, 520);
-    if ((coast && k > 0.45) || (h.t === 'w' && k > 0.8)) { const { x, y } = center(h.c, h.r); sea.push({ x, y, ph: k * 40, w: 230 + hash(h.c, h.r, 521) * 170 }); }
+    const coast = h.t === 'S' || (h.t === 'w' && neighbors(h.c, h.r).some(([nc, nr]) => HEX.get(K(nc, nr)).t !== 'w'));
+    // Wie weit liegt ein Landfeld vom Strand weg? Bis 4 Felder zieht der Nebel in den Wald, nach innen dünner.
+    let d = 0; if (!coast && h.t !== 'w') { d = 9; for (const o of HEX.values()) if (o.t === 'S') d = Math.min(d, hexDist(h.c, h.r, o.c, o.r)); }
+    if (coast || h.t === 'w' || d <= 2) FOGZONE.add(K(h.c, h.r));
+    const k = hash(h.c, h.r, 520), { x, y } = center(h.c, h.r), w = 230 + hash(h.c, h.r, 521) * 170;
+    if ((coast && k > 0.45) || (h.t === 'w' && k > 0.8)) sea.push({ x, y, ph: k * 40, w, a: 1 });
+    else if (d >= 1 && d <= 5 && k > 0.15 + d * 0.1) sea.push({ x, y: y - 6, ph: k * 40, w: w * 1.1, a: 1.35 - d * 0.2 });
   }
-  AMB = { motes: motes.slice(0, 48), clouds, mist, sea: sea.slice(0, 90) };
+  AMB = { motes: motes.slice(0, 48), clouds, mist, sea: sea.slice(0, 160) };
 }
 function drawAmbientUnder(now) {
   const t = now / 1000;
@@ -4534,7 +4538,7 @@ function drawAmbientUnder(now) {
   for (const m of AMB.sea) {
     const dx = Math.sin(t * 0.07 + m.ph) * 70 + Math.sin(t * 0.19 + m.ph * 2) * 18;
     if (!inView(m.x + dx, m.y, m.w)) continue;
-    ctx.globalAlpha = 0.36 + 0.14 * Math.sin(t * 0.25 + m.ph);
+    ctx.globalAlpha = (0.36 + 0.14 * Math.sin(t * 0.25 + m.ph)) * m.a;
     ctx.drawImage(SPR.mist, m.x + dx - m.w / 2, m.y - m.w * 0.17, m.w, m.w * 0.34);
   }
   ctx.globalAlpha = 1;
@@ -8000,6 +8004,7 @@ function updateUI() {
     if (T.def) parts.push(`Verteidigung +${T.def}`);
     if (T.heal) parts.push(`heilt ${T.heal} LP`);
     if (hov.t === 'w') parts.push('unpassierbar');
+    if (FOGZONE.has(K(hov.c, hov.r))) parts.push('Nebel: Sicht nur 2 Felder');
     html += `<div class="terrain">Gelände: <b>${T.n}</b> · ${parts.join(' · ')}</div>`;
     const sec = secretAt(hov.c, hov.r);
     const G = S.mission.goal;
