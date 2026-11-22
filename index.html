@@ -518,7 +518,7 @@ const TYPES = {
   jade:    { name: 'Jadekrieger', icon: '💠', hp: 40, atk: 10, def: 8, mv: 3, rng: 2, counter: 0.8, magic: true, bolt: '#7dffc4', jadeSkin: true,
              desc: 'Der stärkste Seelenlose, aus leuchtender grüner Jade, geboren aus grünem Nebel. Spezialfähigkeit: schleudert grüne Blitze 2 Felder weit, die Häuser in Brand setzen. Gewöhnliche Waffen prallen an ihm ab. Nur eine kristallklare Klinge kann ihn brechen.' },
   tamashi_k: { name: 'Tamashi', icon: '🗡️', hp: 30, atk: 8, def: 3, mv: 3, rng: 1, counter: 0.6, protect: true, crystal: true, art: 'Die',
-             desc: 'Kokoros Mutter mit dem Schwert mit der kristallklaren Klinge. Nur dieses Schwert durchdringt Jade. Wird Tamashi geholt, ist die Mission verloren!' },
+             desc: 'Kokoros Mutter mit dem Schwert mit der kristallklaren Klinge. Nur dieses Schwert durchdringt Jade, und es fängt die Hälfte seiner Blitze ab. Wird Tamashi geholt, ist die Mission verloren!' },
   kitsune: { name: 'Kitsune', icon: '🦊', hp: 18, atk: 7, def: 2, mv: 5, rng: 2, counter: 0.5, magic: true, forest: true, art: 'Die',
              desc: 'Ein Fuchsgeist mit zwei Schwänzen. Wirft blaues Fuchsfeuer 2 Felder weit, das durch Rüstung dringt. Schnell, und im Wald so flink wie auf der Wiese. Stark gegen böse Geister.' },
   tanuki:  { name: 'Tanuki', icon: '🍶', hp: 28, atk: 6, def: 3, mv: 4, rng: 1, counter: 0.7, forest: true, healer: true,
@@ -3656,6 +3656,7 @@ function calcDmg(att, ac, ar, def, dc, dr, opt = {}) {
   if (opt.counter) dmg *= A.counter;
   if (catOf(att.type) === 'bogen' && D.stone) dmg *= 0.3; // Pfeile prallen von Stein ab
   if (D.jadeSkin && !A.crystal) dmg *= 0.15;                  // gewöhnliche Waffen prallen an Jade ab
+  if (D.crystal && A.jadeSkin) dmg *= 0.5;                    // die kristallklare Klinge pariert Jadeblitze
   return Math.max(1, dmg);
 }
 function preview(att, pos, def) {
