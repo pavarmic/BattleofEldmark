@@ -3071,6 +3071,7 @@ const SONNE_MISSIONS = [
   "style": "sonne",
   "bloom": 0.93,
   "title": "Die Nebelküste",
+  "seaMist": true,
   "sub": "Ruder, Dunkelheit und ein Boot",
   "map": [
    "ffffffffffffffffd.ffffffffffffff",
@@ -3157,9 +3158,9 @@ function makeSecretsFor(spots, fixed) {
   shuffle(deck);
   return spots.map((sp, i) => ({ ...sp, outcome: deck[i % deck.length], explored: false }));
 }
-let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], LANTERNS = [];
+let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], MAP_SEAMIST = false, LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f]));
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_SEAMIST = !!M.seaMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f]));
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false, captured: {},
@@ -4500,7 +4501,7 @@ const SPR = {
 const GRAIN = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const d = g.createImageData(128, 128);
   for (let i = 0; i < d.data.length; i += 4) { const v = 100 + Math.random() * 155; d.data[i] = v; d.data[i + 1] = v * 0.95; d.data[i + 2] = v * 0.85; d.data[i + 3] = 255; }
   g.putImageData(d, 0, 0); return c; })();
-let AMB = { motes: [], clouds: [], mist: [] };
+let AMB = { motes: [], clouds: [], mist: [], sea: [] };
 function buildAmbient() {
   buildFangronFx();
   const motes = [], mist = [];
@@ -4512,7 +4513,14 @@ function buildAmbient() {
   }
   const clouds = [];
   for (let i = 0; i < 4; i++) clouds.push({ y: H * (0.12 + i * 0.24) + (Math.random() - 0.5) * 60, off: Math.random() * (W + 800), sp: 5 + Math.random() * 5, w: 340 + Math.random() * 220 });
-  AMB = { motes: motes.slice(0, 48), clouds, mist };
+  // Küstennebel (M.seaMist): dichte Schwaden über Strand, Wasser und Waldsaum
+  const sea = [];
+  if (MAP_SEAMIST) for (const h of HEX.values()) {
+    const coast = h.t === 'S' || (h.t === 'w' && neighbors(h.c, h.r).some(([nc, nr]) => HEX.get(K(nc, nr)).t !== 'w')) || (h.t !== 'w' && neighbors(h.c, h.r).some(([nc, nr]) => HEX.get(K(nc, nr)).t === 'S'));
+    const k = hash(h.c, h.r, 520);
+    if ((coast && k > 0.45) || (h.t === 'w' && k > 0.8)) { const { x, y } = center(h.c, h.r); sea.push({ x, y, ph: k * 40, w: 230 + hash(h.c, h.r, 521) * 170 }); }
+  }
+  AMB = { motes: motes.slice(0, 48), clouds, mist, sea: sea.slice(0, 90) };
 }
 function drawAmbientUnder(now) {
   const t = now / 1000;
@@ -4522,6 +4530,12 @@ function drawAmbientUnder(now) {
     const a = 0.16 + 0.08 * Math.sin(t * 0.4 + m.ph); ctx.globalAlpha = (S.mission && S.mission.mist) ? a * 1.6 : a;
     const dx = Math.sin(t * 0.15 + m.ph) * 22;
     ctx.drawImage(SPR.mist, m.x + dx - m.w / 2, m.y - m.w * 0.16, m.w, m.w * 0.32);
+  }
+  for (const m of AMB.sea) {
+    const dx = Math.sin(t * 0.07 + m.ph) * 70 + Math.sin(t * 0.19 + m.ph * 2) * 18;
+    if (!inView(m.x + dx, m.y, m.w)) continue;
+    ctx.globalAlpha = 0.36 + 0.14 * Math.sin(t * 0.25 + m.ph);
+    ctx.drawImage(SPR.mist, m.x + dx - m.w / 2, m.y - m.w * 0.17, m.w, m.w * 0.34);
   }
   ctx.globalAlpha = 1;
 }
