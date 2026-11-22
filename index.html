@@ -20,6 +20,8 @@
   header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
   h1{font-size:22px;margin:0;color:var(--gold);letter-spacing:.5px}
   #turnInfo{color:var(--muted)}
+  #musicBtn{margin-left:auto;align-self:center;font:13px Georgia,serif;padding:4px 10px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
+  #musicBtn.off{color:var(--muted);opacity:.8}
   main{display:flex;gap:14px;padding:14px 16px;align-items:flex-start;flex-wrap:wrap}
   #boardWrap{position:relative;flex:1 1 640px;min-width:280px}
   #scroller{overflow:auto;max-height:calc(100vh - 80px);border-radius:8px;box-shadow:0 4px 20px #0008;-webkit-overflow-scrolling:touch}
@@ -3140,12 +3142,161 @@ function useCampaign(id) {
   CAMP = null; try { const c = JSON.parse(localStorage.getItem(CAMP_KEY)); if (c && c.roster) CAMP = c; } catch (e) {}
   try { localStorage.setItem(PICK_KEY, CUR_ID); } catch (e) {}
   document.querySelector('header h1').innerHTML = CUR.icon + ' ' + CUR.title + (CUR.beta ? ' <span class="beta">Beta</span>' : '');
+  if (window.BGM) BGM.update();
 }
 useCampaign((() => { try { return localStorage.getItem(PICK_KEY); } catch (e) { return null; } })());
 function saveCamp() { try { localStorage.setItem(CAMP_KEY, JSON.stringify(CAMP)); } catch (e) {} }
 const vet = type => ({ type, xp: 0, lvl: 0, kills: 0 });
 function newCampaign() { CAMP = { mission: 0, roster: CUR.start.map(vet) }; saveCamp(); }
 const heroText = s => s.split('{HERO}').join(HERO_NAME);
+
+// ===== Hintergrundmusik „Land der roten Sonne“ (live erzeugt, keine Dateien) =====
+// Tag: Koto, Bambusflöte, Vögel (u. a. japanischer Buschsänger). Nacht (Missionen mit dusk): langsamer, Grillen, ab und zu ein Waldkauz.
+var BGM = (function () {
+  const KEY = 'rote-sonne-musik';
+  let on = true; try { on = localStorage.getItem(KEY) !== 'aus'; } catch (e) {}
+  let ctx = null, master, musicBus, natBus, running = false, mode = 'tal', timers = [], drone = null, deg = 5, phraseNo = 0, noiseBuf = null;
+  const kotoCache = {}, BASE = 146.83, SCALE = [0, 2, 5, 7, 9];
+  const freq = d => { const o = Math.floor(d / 5), i = ((d % 5) + 5) % 5; return BASE * Math.pow(2, o + SCALE[i] / 12); };
+  const later = (fn, s) => timers.push(setTimeout(fn, s * 1000));
+  function panTo(node, pan, bus) { if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; node.connect(p); p.connect(bus); } else node.connect(bus); }
+  function init() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
+    const sr = ctx.sampleRate, len = Math.floor(sr * 3.2), b = ctx.createBuffer(2, len, sr);
+    for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+    const rv = ctx.createConvolver(); rv.buffer = b; const wet = ctx.createGain(); wet.gain.value = 0.45; wet.connect(rv); rv.connect(master);
+    musicBus = ctx.createGain(); musicBus.connect(master); musicBus.connect(wet);
+    natBus = ctx.createGain(); natBus.gain.value = 0.5; natBus.connect(master); const nw = ctx.createGain(); nw.gain.value = 0.25; natBus.connect(nw); nw.connect(wet);
+  }
+  function kotoBuf(f) {
+    const k = Math.round(f * 10); if (kotoCache[k]) return kotoCache[k];
+    const sr = ctx.sampleRate, len = Math.floor(sr * 4), b = ctx.createBuffer(1, len, sr), out = b.getChannelData(0);
+    const N = Math.max(3, Math.round(sr / f)), ring = new Float32Array(N);
+    for (let i = 0; i < N; i++) ring[i] = Math.random() * 2 - 1;
+    for (let pass = 0; pass < 4; pass++) for (let i = 1; i < N; i++) ring[i] = 0.5 * ring[i] + 0.5 * ring[i - 1];
+    let p = 0;
+    for (let i = 0; i < len; i++) { const v = ring[p]; ring[p] = 0.996 * (0.3 * v + 0.4 * ring[(p + 1) % N] + 0.3 * ring[(p + 2) % N]); out[i] = v; p = (p + 1) % N; }
+    for (let i = 0; i < len; i++) { const t = i / sr; out[i] = out[i] * 0.7 + 0.35 * Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 1.6) * Math.min(1, t * 200); }
+    return kotoCache[k] = b;
+  }
+  function koto(t, f, vel, pan) {
+    const s = ctx.createBufferSource(); s.buffer = kotoBuf(f);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = mode === 'nacht' ? 1300 : 1800; lp.Q.value = 0.3;
+    const g = ctx.createGain(); g.gain.value = vel * 0.55; s.connect(lp); lp.connect(g); panTo(g, pan, musicBus); s.start(t); s.stop(t + 4);
+  }
+  function noise() {
+    if (!noiseBuf) { const len = ctx.sampleRate * 2; noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; }
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s;
+  }
+  function flute(t, f, dur) {
+    const vel = 0.22, o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f * 0.97, t); o.frequency.linearRampToValueAtTime(f, t + 0.35);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 4.8; const ld = ctx.createGain(); ld.gain.setValueAtTime(0, t); ld.gain.linearRampToValueAtTime(f * 0.012, t + dur * 0.8); lfo.connect(ld); ld.connect(o.frequency);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f * 3;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel, t + 0.4); g.gain.setValueAtTime(vel, t + dur - 0.6); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(musicBus);
+    const n = noise(), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 2;
+    const ng = ctx.createGain(); ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(vel * 0.35, t + 0.15); ng.gain.linearRampToValueAtTime(vel * 0.12, t + 0.6); ng.gain.linearRampToValueAtTime(0, t + dur);
+    n.connect(bp); bp.connect(ng); ng.connect(musicBus);
+    o.start(t); lfo.start(t); n.start(t); o.stop(t + dur + 0.1); lfo.stop(t + dur + 0.1); n.stop(t + dur + 0.1);
+  }
+  function startDrone() {
+    stopDrone(); const g = ctx.createGain(); g.gain.value = 0; g.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 4);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+    const os = [BASE / 2, BASE * 0.75].map((f, i) => { const o = ctx.createOscillator(); o.frequency.value = f; o.detune.value = i ? 3 : -3; o.connect(lp); o.start(); return o; });
+    lp.connect(g); g.connect(musicBus); drone = { g, os };
+  }
+  function stopDrone() { if (!drone) return; const d = drone; drone = null; d.g.gain.cancelScheduledValues(ctx.currentTime); d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => d.os.forEach(o => o.stop()), 2000); }
+  function phrase() {
+    if (!running) return;
+    const slow = mode === 'nacht' ? 1.7 : 1, soft = mode === 'nacht' ? 0.75 : 1, top = mode === 'nacht' ? 10 : 12;
+    let t = ctx.currentTime + 0.1;
+    if (phraseNo % 2 === 0) koto(t, freq(Math.random() < 0.6 ? 0 : 3), 0.55, -0.3);
+    const n = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      deg = Math.max(3, Math.min(top, deg + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
+      koto(t, freq(deg), (0.4 + Math.random() * 0.2) * soft, 0.2);
+      if (Math.random() < 0.2) koto(t + 0.06, freq(deg - 5), 0.25, 0.1);
+      t += (0.35 + Math.random() * 0.55) * slow;
+    }
+    if (phraseNo % 3 === 1) {
+      let ft = t + 0.5, fd = deg + [-1, 0, 1][Math.floor(Math.random() * 3)];
+      for (let i = 0, m = 1 + Math.floor(Math.random() * 2); i < m; i++) { const dur = (2 + Math.random() * 1.8) * slow; flute(ft, freq(Math.max(5, Math.min(12, fd))), dur); ft += dur + 0.2; fd += Math.random() < 0.5 ? -1 : -2; }
+      t = ft;
+    }
+    if (Math.random() < 0.3) deg = 5 + Math.floor(Math.random() * 3);
+    phraseNo++;
+    later(phrase, (t - ctx.currentTime) + (1.5 + Math.random() * 2.5) * slow);
+  }
+  function chirp(t, f1, f2, d, vol, pan) {
+    const o = ctx.createOscillator(); o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + d * 0.2); g.gain.linearRampToValueAtTime(0, t + d);
+    o.connect(g); panTo(g, pan, natBus); o.start(t); o.stop(t + d + 0.02);
+  }
+  function bird(t) {
+    const r = Math.random(), pan = Math.random() * 1.6 - 0.8;
+    if (r < 0.22) { const v = 0.07; chirp(t, 1100, 1350, 1.0, v, pan); chirp(t + 1.15, 2600, 1900, 0.12, v, pan); chirp(t + 1.32, 2200, 2900, 0.14, v, pan); chirp(t + 1.52, 3300, 2100, 0.32, v, pan); }
+    else if (r < 0.6) { const b = 3000 + Math.random() * 1500, n = 3 + Math.floor(Math.random() * 6), v = 0.05 + Math.random() * 0.05; for (let i = 0; i < n; i++) { chirp(t, b * (1 + Math.random() * 0.25), b * (0.8 + Math.random() * 0.3), 0.05 + Math.random() * 0.05, v, pan); t += 0.08 + Math.random() * 0.06; } }
+    else { const b = 2200 + Math.random() * 900; chirp(t, b, b * 1.25, 0.18, 0.05, pan); chirp(t + 0.28, b * 1.2, b * 0.9, 0.25, 0.05, pan); }
+  }
+  function cricket(t) {
+    const pan = Math.random() * 1.6 - 0.8, f = 4200 + Math.random() * 600, n = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const o = ctx.createOscillator(); o.frequency.value = f; const g = ctx.createGain(); g.gain.value = 0;
+      const am = ctx.createOscillator(); am.frequency.value = 40; const ag = ctx.createGain(); ag.gain.value = 0.012; am.connect(ag); ag.connect(g.gain);
+      const env = ctx.createGain(); env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(1, t + 0.03); env.gain.setValueAtTime(1, t + 0.2); env.gain.linearRampToValueAtTime(0, t + 0.25);
+      o.connect(g); g.connect(env); panTo(env, pan, natBus); o.start(t); am.start(t); o.stop(t + 0.3); am.stop(t + 0.3); t += 0.38;
+    }
+  }
+  function hoot(t, f1, f2, d, vol, pan, trem) {
+    const o = ctx.createOscillator(); o.frequency.setValueAtTime(f1, t); o.frequency.linearRampToValueAtTime(f2, t + d);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.08); g.gain.setValueAtTime(vol, t + d * 0.6); g.gain.linearRampToValueAtTime(0, t + d);
+    if (trem) { const l = ctx.createOscillator(); l.frequency.value = 7; const lg = ctx.createGain(); lg.gain.value = f1 * 0.03; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + d + 0.05); }
+    o.connect(lp); lp.connect(g); panTo(g, pan, natBus); o.start(t); o.stop(t + d + 0.05);
+  }
+  function owl(t) { const pan = Math.random() * 1.2 - 0.6; hoot(t, 470, 440, 0.9, 0.16, pan); hoot(t + 2.2, 430, 420, 0.18, 0.11, pan); hoot(t + 2.55, 460, 440, 1.3, 0.16, pan, true); }
+  function nature() {
+    if (!running) return; const t = ctx.currentTime + 0.05;
+    if (mode === 'tal') bird(t); else { cricket(t); if (Math.random() < 0.04) owl(ctx.currentTime + 0.6); }
+    later(nature, mode === 'tal' ? 2 + Math.random() * 5 : 0.8 + Math.random() * 2);
+  }
+  function start() {
+    if (!ctx) init(); if (ctx.state !== 'running') ctx.resume();
+    if (running) return; running = true;
+    master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0.5, ctx.currentTime, 0.5);
+    startDrone(); phraseNo = 0; phrase(); nature();
+  }
+  function stop() {
+    if (!running) return; running = false; timers.forEach(clearTimeout); timers = []; stopDrone();
+    master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+  }
+  const wanted = () => on && CUR_ID === 'sonne';
+  function button() {
+    let b = document.getElementById('musicBtn');
+    if (!b) {
+      b = document.createElement('button'); b.id = 'musicBtn'; b.type = 'button';
+      b.onclick = e => { e.stopPropagation(); on = !on; try { localStorage.setItem(KEY, on ? 'an' : 'aus'); } catch (er) {} update(true); };
+      document.querySelector('header').appendChild(b);
+    }
+    b.hidden = CUR_ID !== 'sonne';
+    b.textContent = on ? '♪ Musik an' : '♪ Musik aus'; b.classList.toggle('off', !on);
+    b.title = on ? 'Musik ausschalten' : 'Musik einschalten';
+  }
+  // gesture = true, wenn der Aufruf aus einer Berührung kommt (iPhone erlaubt Ton erst dann)
+  function update(gesture) {
+    button();
+    const m = (S && S.mission && S.mission.dusk) ? 'nacht' : 'tal';
+    if (m !== mode) { mode = m; if (running) { timers.forEach(clearTimeout); timers = []; startDrone(); phrase(); nature(); } }
+    if (!wanted()) { if (ctx) stop(); return; }
+    if (ctx || gesture) start();
+  }
+  function unlock() { if (wanted()) update(true); }
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev => addEventListener(ev, unlock, { capture: true, passive: true }));
+  document.addEventListener('visibilitychange', () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (wanted()) ctx.resume(); });
+  return { update };
+})();
+BGM.update();
 
 function loadMap(rows) {
   MAP = rows; ROWS = rows.length; COLS = rows[0].length;
@@ -3201,6 +3352,7 @@ function setupBattle(M, roster) {
   scroller.scrollLeft = 0; scroller.scrollTop = 0;
   const first = alive(0)[0]; if (first) requestAnimationFrame(() => ensureVisible(first.c, first.r));
   updateUI();
+  BGM.update();
 }
 function beginBattle() {
   log(`${S.mission.title}: ${S.mission.goalText}`, 's');
