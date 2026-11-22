@@ -751,6 +751,12 @@ async function fireEvent(T) {
       if (flag === 'guard') u.guard = true; if (flag === 'wait') u.waitR = 3; if (flag === 'dormant') u.dormant = true;
       fxText(u, T.shout || 'Aaarh!', '#ffb0a8'); first = first || u;
     }
+    if (T.spawnRear) {
+      const ps = alive(0).filter(u => !TYPES[u.type].protect && !TYPES[u.type].hero), east = (a, b) => b.c - a.c;
+      const rear = ps.filter(u => /bauer/.test(u.type)).sort(east)[0] || ps.sort(east)[0];
+      const sp = rear && (neighbors(rear.c, rear.r).filter(([c, r]) => c >= rear.c && !unitAt(c, r) && isFinite(TER[terr(c, r)].cost))[0] || freeNear(rear.c, rear.r));
+      if (sp) { const u = addUnit(T.spawnRear, 1, sp[0], sp[1]); foeVet(u, S.mission); fxText(rear, 'Hilfe!', '#ffb0a8'); first = rear; }
+    }
     if (T.wake) for (const e of alive(1)) e.waitR = 0;
     if (T.crystal) for (const u of alive(0)) if (u.type === 'tamashi') { u.type = 'tamashi_k'; u.spr = null; fxText(u, 'Kristallschwert!', '#c8f4ff'); first = first || u; }
     if (T.awaken) for (const e of alive(1)) if (e.dormant) { e.dormant = false; fxText(e, T.shout || '…', '#d8d4cc'); first = first || e; }
@@ -782,7 +788,7 @@ async function tryCapture(u, quiet) {
   S.captured[f.id] = S.turn; u.undo = null;
   fxText(u, 'Erobert!', '#9cd0ff');
   await fireEvent({ ...f, log: f.log || `${uname(u)} erobert ${f.name}!` });
-  if (S.mission.captureAll && capsDone()) S.goalReached = true;
+  if ((S.mission.captureAll && capsDone()) || f.win) S.goalReached = true;
   // Steht schon jemand auf einem Banner, das jetzt frei wird? Dann gleich mit erobern.
   else for (const p of alive(0)) if (await tryCapture(p, true)) break;
   return true;
@@ -3024,47 +3030,47 @@ const SONNE_MISSIONS = [
   "mist": true,
   "bloom": 0.96,
   "title": "Yume no mori",
-  "sub": "Den Feind abschütteln",
+  "sub": "Flucht durch den Traumwald",
   "map": [
-   "hhffffffhhffhffffffffhwhfffhhffhhf",
-   "ffffffffffffffffffffffwfffffffffff",
-   "ffffffffffffffffffffffwfffff..ffff",
-   "ffff..ffffffff..ffffffwffff...ffff",
-   "ffff...fffffff...fffffwfffff..ffff",
-   "ffff..fff..fff..ffffffw.ffffffffff",
-   "fffffffff...ffffffffffw..fffffffff",
-   "fffffffff..fffffffffffw.ffffffffff",
-   "ff...fffffffffffffffffwfffffff...f",
-   "f...ddddddddffffffddddwffffff....f",
-   "f...d.ffffffddddddd...uddddff...dd",
-   "f....ffffffffffffff..fwfffdff.dd.f",
-   "ff...fffffff..ffffffffwffffdddd..f",
-   "fffffffffff...fffffffwff..ffffffff",
-   "ffffffffffff..fffffffwff...fffffff",
-   "fffffff..ffffffff..fwfff..ffffffff",
-   "fffff.....fffffff...wfffffffffffff",
-   "fff.......fffffff..fwfffffffffffff",
-   "fff.......ffffffffffwfffffffffffff",
-   "hhhf.....hhffffhfffhwfhfhfhhffhhhh"
+   "ffffff.fffffff.fw..f.fff.f.ff.fff.",
+   "ffffffffffffffffwffffffff..ffffff.",
+   "ffff.f.f..fff..fwf.ffffff.........",
+   "ffff..ffff.ffff.fwfffffffff..h....",
+   "ffff.ffffff..ffffwffffffffffhhh...",
+   "ffffff.ffffffffffwffff.fff.fhhh...",
+   "fffffff.fffffffffwfffffffff......v",
+   "fffffff.ff.fffffwfff.fffff.......v",
+   "ffffffffffffffffwfff.f.f.f.f......",
+   "ffffffffffffff.fwffff.ff.ff.......",
+   "ff.fff....f.f.ffu..f..f..f........",
+   "f..f.ffff...ff.fwff.fff.f.f.......",
+   "f.fffff.ffffffffwfffff...fff.....v",
+   "ff.fffffffffffffwfff.fffffff....v.",
+   ".f.f..fffffffffwffff.fffff.......v",
+   "fffffffffff.ff.wfffff.ffff..hhh...",
+   "f.ff.ffffffffffwf.fffff..f..hhh...",
+   "fffffff.ffff.ffwfffffffffff..h....",
+   "fffffff..fffffffwff.ffffffff.ff...",
+   "fffff..fffffffffwffffff.fffff.f.f."
   ],
-  "trails": [[[33, 10], [32, 10], [31, 11], [30, 11], [30, 12], [29, 12], [28, 12], [27, 12], [26, 11], [26, 10], [25, 10], [24, 10], [23, 10], [22, 10], [21, 9], [20, 9], [19, 9], [18, 9], [18, 10], [17, 10], [16, 10], [15, 10], [14, 10], [13, 10], [12, 10], [11, 9], [10, 9], [9, 9], [8, 9], [7, 9], [6, 9], [5, 9], [4, 9], [4, 10]], [[4, 10], [4, 11], [4, 12], [5, 13], [5, 14], [5, 15], [6, 16], [6, 17], [6, 18], [6, 19]]],
+  "trails": [[[33, 10], [32, 10], [31, 10], [30, 10], [29, 10], [28, 10], [27, 10], [26, 10], [25, 9], [25, 10], [24, 10], [23, 11], [23, 10], [22, 10], [21, 9], [21, 10], [20, 10], [19, 11], [18, 11], [18, 10], [17, 10], [16, 10], [15, 9], [14, 9], [14, 10], [13, 10], [12, 11], [11, 11], [10, 11], [9, 11], [9, 10], [8, 10], [7, 10], [6, 10], [5, 11], [4, 11], [3, 11], [2, 11], [1, 11], [0, 11]]],
   "slots": [[31, 10], [32, 9], [31, 9], [32, 11], [31, 11], [30, 10], [32, 8], [30, 9], [30, 11], [31, 12], [32, 12], [31, 8]],
-  "joinUnits": ["tamashi_k"],
-  "join": [[32, 10]],
-  "enemy": [["onibi", 15, 6, "wild"], ["onibi", 21, 15, "wild"], ["onibi", 9, 13, "wild"], ["onibi", 24, 4, "wild"], ["holz", 13, 14, "wait"], ["holz", 8, 9, "wait"]],
-  "secrets": [{"c": 15, "r": 4, "name": "Fuchsbau", "kind": "hoehle"}, {"c": 18, "r": 16, "name": "Alte Zeder", "kind": "schrein"}, {"c": 8, "r": 16, "name": "Moosschrein", "kind": "schrein"}],
-  "secretDeck": [{"kind": "ally", "unit": "kitsune", "text": "Zwischen den Wurzeln glimmen zwei Augen, dann ein blaues Flämmchen. Eine weiße Füchsin mit zwei Schwänzen tritt heraus: ein <b>Kitsune</b>, ein Fuchsgeist. Sie mustert {HERO} lange. „Du hast ein Herz, das brennt. Ich gehe ein Stück mit dir.“"}, {"kind": "ally", "unit": "tanuki", "text": "Im Farn raschelt es. Ein dicker <b>Tanuki</b> mit Strohhut und Sakekrug watschelt hervor und lacht: „Schatten in meinem Wald? Das gefällt mir gar nicht. Wer müde ist, dem helfe ich auf die Beine.“"}, {"kind": "monster", "unit": "onibi", "text": "Plötzlich schwebt ein blaues Licht hervor. Kein Glühwürmchen: ein <b>Irrlicht</b>, ein böser Waldgeist. Es kichert und stürzt sich auf euch!"}],
-  "critters": [["reh", 23, 6], ["hase", 12, 13], ["fuchs", 25, 14], ["reh", 5, 4], ["hase", 28, 3], ["reh", 10, 6]],
+  "joinUnits": ["tamashi_k", "yumi"],
+  "join": [[32, 10], [30, 8]],
+  "enemy": [["onibi", 23, 4, "wild"], ["onibi", 10, 16, "wild"], ["onibi", 20, 16, "wild"], ["stein", 12, 9, "rock"], ["stein", 13, 11, "rock"], ["stein", 10, 10, "rock"]],
+  "secrets": [{"c": 22, "r": 3, "name": "Fuchsbau", "kind": "hoehle"}, {"c": 13, "r": 16, "name": "Moosiger Stein", "kind": "schrein"}, {"c": 9, "r": 5, "name": "Moosschrein", "kind": "schrein"}],
+  "secretDeck": [{"kind": "ally", "unit": "kitsune", "text": "Zwischen den Wurzeln glimmen zwei Augen, dann ein blaues Flämmchen. Eine weiße Füchsin mit zwei Schwänzen tritt heraus: ein <b>Kitsune</b>, ein Fuchsgeist. Sie mustert {HERO} lange. „Du hast ein Herz, das brennt. Ich gehe ein Stück mit dir.“"}, {"kind": "monster", "unit": "onibi", "text": "Plötzlich schwebt ein blaues Licht hervor. Kein Glühwürmchen: ein <b>Irrlicht</b>, ein böser Waldgeist. Es kichert und stürzt sich auf euch!"}, {"kind": "leer", "text": "Nur Moos, ein paar Pilze und der Ruf eines Käuzchens. Hier ist niemand."}],
+  "critters": [["reh", 24, 6], ["hase", 12, 14], ["fuchs", 25, 15], ["reh", 5, 15], ["hase", 30, 2], ["reh", 9, 7]],
   "foeLvl": 0,
   "foeUp": 0,
-  "intro": "Sie rennen. Hinter ihnen versinkt Kirisato in der Nacht, vor ihnen liegt der <b>Yume no mori</b>, der Traumwald. Zwischen den Stämmen hängt Nebel, und fremde Lichter tanzen zwischen den Bäumen. Manche Lichter sind freundlich. Andere nicht.<br><br>{HERO} spürt es im Nacken: Die Schatten des Kalten Königs sind ihnen auf den Fersen. Gegen so viele können sie nicht kämpfen, sie müssen den Feind <b>abschütteln</b>. Tamashi kennt einen Weg: durch den Bach, damit das Wasser die Spur verwischt, vorbei am alten <b>Fuchsschrein</b>, und dann nach Süden aus dem Wald hinaus, zur Nebelküste.",
-  "goalText": "Erobert die Banner: zuerst die Bachfurt und den Fuchsschrein, zuletzt den Waldrand im Süden. Tamashi darf nicht fallen.",
-  "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 33, 6], ["spaeher", 33, 14], ["spaeher", 33, 10]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [31, 10], "place": "Am Waldrand", "title": "Schatten im Rücken", "log": "Drei Schattenspäher nehmen eure Spur auf!", "text": "Hinter euch, am Waldrand, lösen sich drei Gestalten aus der Dunkelheit. Sie haben keine Gesichter, nur glatte Masken, und um sie herum kräuselt sich Rauch. <b>Schattenspäher</b> des Kalten Königs. Sie sind schnell, und sie haben eure Spur.<br><br><small>Schattenspäher sind flink, aber nicht zäh. Lauft weiter, oder stellt euch ihnen.</small>"}, {"id": "nachschub", "after": "schatten", "turn": 3, "spawn": [["spaeher", 33, 8], ["holz", 33, 12]], "shout": "…", "img": "holz", "imgSide": 1, "place": "Im Traumwald", "title": "Sie geben nicht auf", "log": "Weitere Seelenlose folgen euch in den Wald!", "text": "Zwischen den Stämmen knackt Holz. Ein Holzkrieger stapft durch das Unterholz, und neben ihm huscht ein weiterer Schatten. Die Seelenlosen geben nicht auf."}],
-  "outro": "Am Waldrand sinkt Tamashi ins nasse Gras und lacht leise, zum ersten Mal seit der Nacht der Laternen. Honoo zählt die Pfeile, Kokoro zählt die Freunde. Alle sind noch da.<br><br>Vor ihnen rauscht das Meer, unsichtbar im Nebel. Irgendwo dort unten an der <b>Nebelküste</b> gibt es Fischer und Boote. Und weiter draußen, so hat die Stimme im Schrein gesagt, liegt der Hafen der Träume.",
+  "intro": "Kokoro, Honoo und Tamashi rennen aus dem Dorf, immer nach Westen. Am Ende von Kirisato schließt sich ihnen noch eine <b>Bogenschützin</b> an. Hinter ihnen brennen die Laternen, und die Seelenlosen ziehen durch die Gassen.<br><br>Über die Felder zwischen den beiden Hügeln geht es zum Waldrand. Dahinter liegt der <b>Yume no mori</b>, der Traumwald. Niemand weiß, was sie dort erwartet.",
+  "goalText": "Folgt dem Weg durch den Traumwald bis zur Kreuzung und sucht dann das Licht im Wald. Tamashi darf nicht fallen.",
+  "triggers": [{"id": "bauer", "near": [23, 11], "d": 1, "spawnRear": "spaeher", "danger": true, "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Ein Schrei!", "log": "Ein Schatten greift von hinten an!", "text": "Da! Hinter euch schreit jemand auf. Ein <b>Schattenspäher</b> ist aus dem Dunkel gesprungen und greift von hinten an!<br><br><small>Schnell, helft ihm! Schatten lösen sich in Rauch auf, wenn man sie besiegt.</small>"}, {"id": "verfolger", "after": "bauer", "turn": 2, "spawn": [["spaeher", 33, 9], ["spaeher", 33, 11]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Sie folgen euch", "log": "Weitere Schattenspäher folgen eurer Spur!", "text": "Weit hinter euch, am Waldrand, lösen sich zwei weitere Schatten aus der Nacht. Sie haben eure Spur."}, {"id": "hinterhalt", "near": [20, 10], "d": 1, "spawn": [["holz", 18, 7], ["holz", 18, 13]], "shout": "Krrr!", "img": "holz", "imgSide": 1, "look": [18, 10], "place": "Im Traumwald", "title": "Holzkrieger!", "log": "Links und rechts brechen Holzkrieger aus dem Wald!", "text": "Plötzlich bricht es vor euch links und rechts aus dem Unterholz: <b>Holzkrieger</b>! Sie haben auf euch gewartet.<br><br><small>Holz brennt! Brandpfeile von Honoo und den Bogenschützen helfen.</small>"}, {"id": "felsen", "near": [12, 10], "d": 3, "awaken": true, "danger": true, "shout": "Knirsch …", "img": "stein", "imgSide": 1, "look": [12, 10], "place": "Bei den drei Felsen", "title": "Die Felsen erwachen!", "log": "Die drei Felsen verwandeln sich in Steinkrieger!", "text": "Am Weg liegen drei große, moosige Felsen. Als ihr vorbeigeht, knirscht es. Die Felsen richten sich auf, Arme wachsen aus dem Stein: <b>Steinkrieger</b>!<br><br><small>Pfeile prallen an Stein ab. Werft die Netze!</small>"}, {"id": "nachschub", "after": "verfolger", "turn": 4, "spawn": [["spaeher", 33, 10], ["spaeher", 27, 4]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Die Schatten geben nicht auf", "log": "Noch mehr Schatten folgen euch!", "text": "Hinter euch kräuselt sich wieder Rauch zwischen den Stämmen. Die Schatten geben nicht auf."}],
+  "outro": "Im Baumhaus ist es eng, warm und hell. Der Tanuki schenkt Tee aus, der nach Kirschblüten schmeckt, und draußen bleiben die Schatten am Rand des Lichts stehen. Sie kommen nicht näher.<br><br>Zum ersten Mal seit der Nacht der Laternen schläft {HERO} ein. Im Traum hört sie das Meer.",
   "reward": [],
-  "river": [[22, 0], [22, 1], [22, 2], [22, 3], [22, 4], [22, 5], [22, 6], [22, 7], [22, 8], [22, 9], [22, 10], [22, 11], [22, 12], [21, 13], [21, 14], [20, 15], [20, 16], [20, 17], [20, 18], [20, 19]],
-  "captureAll": true,
-  "captures": [{"id": "furt", "c": 22, "r": 10, "name": "Bachfurt", "lose": ["spaeher", 2], "img": "spaeher", "imgSide": 1, "place": "An der Bachfurt", "title": "Das Wasser nimmt die Spur mit", "text": "Das Wasser ist eiskalt und reicht bis an die Knie. {HERO} watet als Erste hinüber, die anderen folgen, Tamashi ganz zuletzt. Auf der anderen Seite schauen sie zurück.<br><br>Der Bach hat eure Spur mitgenommen. Wenn die Schattenspäher hier ankommen, schnüffeln sie ratlos am Ufer herum.<br><br><small>Zwei Runden lang finden die Schattenspäher eure Spur nicht. Weiter, zum Fuchsschrein!</small>"}, {"id": "schrein", "c": 3, "r": 10, "name": "Fuchsschrein", "deco": "torii", "vanish": ["spaeher", 2], "lose": ["spaeher", 2], "img": "kitsune", "place": "Am Fuchsschrein", "title": "Fuchsfeuer", "text": "Der alte Schrein ist von Moos überwachsen, die Fuchsfiguren aus Stein tragen rote Lätzchen. {HERO} legt eine Reiskugel auf die Stufen und verbeugt sich.<br><br>Da flammen zwischen den Bäumen blaue Lichter auf, eins nach dem anderen: <b>Fuchsfeuer</b>. Sie tanzen davon, nach Norden, weg von euch. Die Schatten folgen ihnen in den Nebel, und zwei von ihnen kommen nie zurück.<br><br>Eine leise Stimme aus dem Schrein: „Nach Süden. Am Waldrand beginnt die Nebelküste.“"}, {"id": "waldrand", "c": 6, "r": 18, "name": "Waldrand im Süden", "needs": ["furt", "schrein"], "place": "Am Waldrand", "title": "Die Nebelküste", "text": "Die Bäume werden lichter. Vor euch liegt eine graue Weite, und es riecht nach Salz und Tang. Der Nebel ist so dicht, dass man die eigenen Füße kaum sieht. Hinter euch bleibt es still. Keine Schatten mehr.<br><br>Ihr habt sie abgeschüttelt. Fürs Erste."}]
+  "river": [[16, 0], [16, 1], [16, 2], [17, 3], [17, 4], [17, 5], [17, 6], [16, 7], [16, 8], [16, 9], [16, 10], [16, 11], [16, 12], [16, 13], [15, 14], [15, 15], [15, 16], [15, 17], [16, 18], [16, 19]],
+  "captures": [{"id": "huegel", "c": 29, "r": 4, "name": "Hügel", "img": "jade", "imgSide": 1, "look": [33, 10], "place": "Auf dem Hügel", "title": "Ein Blick zurück", "text": "Honoo rennt auf den Hügel und schaut zurück. Im Licht des Dorfes bewegen sich Gestalten zwischen den Häusern: Holzkrieger, viele Holzkrieger. Und dazwischen ein grüner Schimmer, kalt wie Eis. Ein <b>Jadekrieger</b>.<br><br>„Weiter!“, ruft Honoo. „Zum Wald, schnell!“"}, {"id": "waldrand", "c": 26, "r": 10, "name": "Waldrand", "place": "Am Waldrand", "title": "Der Traumwald", "text": "Am Waldrand werden sie langsamer. Der Wald ist anders als jeder Wald, den sie kennen. Nebel hängt zwischen den Stämmen, blaue Lichter tanzen in der Ferne, und die Bäume flüstern. Sie schleichen den Weg entlang, der sich mal nach links, mal nach rechts biegt.<br><br>Und sie spüren es alle: Etwas folgt ihnen."}, {"id": "furt", "c": 16, "r": 10, "name": "Bachfurt", "img": "flussdrache", "imgSide": 0, "place": "Am Bach", "title": "Der Wasserdrache", "text": "Ein Bach kreuzt den Weg, sie müssen hindurch. Das Wasser ist eiskalt. Mitten in der Furt schäumt es plötzlich auf: Ein <b>Wasserdrache</b> taucht auf, lang und silbern wie der Mond. Er schwimmt ganz nah an ihnen vorbei, schaut {HERO} mit einem goldenen Auge an … und verschwindet in der Tiefe.<br><br>Niemand sagt ein Wort. Hinter ihnen im Wald knackt es. Die Schatten folgen immer noch."}, {"id": "kreuzung", "c": 7, "r": 10, "name": "Kreuzung", "place": "An der Kreuzung", "title": "Der Wegweiser", "text": "In der dunkelsten Stunde der Nacht kommen sie an eine Kreuzung. Niemand von ihnen kennt sie. An einem alten Wegweiser hängt ein Schild, und Tamashi liest leise vor:<br><br><i>„Ist die Nacht noch so dunkel, ein Licht wird kommen und sie vertreiben!“</i><br><br>Der Pfeil zeigt nicht den Weg entlang, sondern mitten in den Wald hinein. {HERO} zögert nur kurz. „Wir folgen dem Wegweiser.“<br><br><small>Verlasst den Weg und sucht im Wald nach dem Licht (Norden).</small>"}, {"id": "baumhaus", "c": 4, "r": 3, "name": "Baumhaus", "deco": "baumhaus", "needs": ["kreuzung"], "win": true, "heal": 4, "allies": [["tanuki", 4, 3]], "img": "tanuki", "place": "Im Baumhaus", "title": "Das Licht im Wald", "text": "Hoch oben in einer alten Zeder brennt ein warmes Licht. Ein Baumhaus! {HERO} klettert die Leiter hinauf und wird von einem dicken <b>Tanuki</b> mit Strohhut empfangen.<br><br>„Kommt alle hinein, auch wenn es eng aussieht, ihr findet alle Platz! Die Schatten meiden mein Licht. Bleibt bei mir und rastet.“"}],
+  "signs": [[7, 10]]
  },
  {
   "id": "s3",
@@ -3102,7 +3108,7 @@ const SONNE_MISSIONS = [
   "join": [[17, 1]],
   "enemy": [["holz", 8, 5, "wait"], ["holz", 11, 10, "wait"], ["onibi", 25, 6, "wild"], ["onibi", 27, 11, "wild"], ["stein", 15, 16, "guard"], ["stein", 19, 16, "guard"]],
   "secrets": [{"c": 7, "r": 5, "name": "Verlassene Köhlerhütte", "kind": "hoehle"}, {"c": 21, "r": 12, "name": "Kleiner Schrein", "kind": "schrein"}, {"c": 24, "r": 6, "name": "Moosige Steinlaterne", "kind": "schrein"}],
-  "secretDeck": [{"kind": "ally", "unit": "yumi", "text": "In der verlassenen Hütte sitzt eine junge Jägerin und spannt blitzschnell ihren langen Bogen. Dann erkennt sie {HERO} und senkt ihn. „Ihr kommt aus Kirisato? Die Schatten haben auch meinen Großvater geholt. Ich komme mit euch.“"}, {"kind": "monster", "unit": "onibi", "text": "Ein blaues Licht flackert auf und kichert. Ein <b>Irrlicht</b>! Böse Waldgeister lieben es, Wanderer in die Irre zu führen."}, {"kind": "leer", "text": "Nur Moos, ein paar Muscheln als Opfergabe und der Geruch von Salz. Das Meer ist nicht mehr weit."}],
+  "secretDeck": [{"kind": "ally", "unit": "tsuru", "text": "Aus dem Nebel gleitet ein großer weißer Vogel und landet neben {HERO}: ein <b>Kranich</b>. Er neigt den Kopf, als würde er sie kennen. Dann bleibt er einfach bei euch."}, {"kind": "monster", "unit": "onibi", "text": "Ein blaues Licht flackert auf und kichert. Ein <b>Irrlicht</b>! Böse Waldgeister lieben es, Wanderer in die Irre zu führen."}, {"kind": "leer", "text": "Nur Moos, ein paar Muscheln als Opfergabe und der Geruch von Salz. Das Meer ist nicht mehr weit."}],
   "critters": [["reh", 4, 13], ["hase", 22, 11], ["fuchs", 27, 5], ["reh", 12, 4]],
   "foeLvl": 0,
   "foeUp": 0,
@@ -3187,7 +3193,7 @@ function setupBattle(M, roster) {
     roster.forEach((v, i) => { const sp = spotFor(i); if (!sp) return; taken.add(K(sp[0], sp[1])); const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = u.xp0 = v.xp; u.lvl = u.lvl0 = v.lvl; u.kills = u.k0 = v.kills || 0; u.hp = maxHp(u); });
     (M.joinUnits || []).forEach((t, i) => { const [c, r] = M.join[i]; addUnit(t, 0, c, r); });
     S.fired = {};
-    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r, flag === 'wild'); if (flag === 'wild') u.waitR = 3; if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; u.post = [c, r]; foeVet(u, M); }
+    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r, flag === 'wild'); if (flag === 'wild') u.waitR = 3; if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; if (flag === 'rock') u.dormant = u.rock = true; u.post = [c, r]; foeVet(u, M); }
   }
   document.getElementById('log').innerHTML = '';
   document.getElementById('overlay').classList.add('hidden');
@@ -3742,7 +3748,7 @@ function checkEnd() {
   let res = null;
   const protLost = S.units.some(u => u.side === 0 && TYPES[u.type].protect && u.hp <= 0);
   if (!p || !heroAlive || protLost) res = false;
-  else if ((!e && !M.captureAll && !(M.triggers || []).some(T => T.spawn && !(S.fired && T.id in S.fired))) || S.goalReached) res = true;
+  else if ((!e && !M.captures && !(M.triggers || []).some(T => T.spawn && !(S.fired && T.id in S.fired))) || S.goalReached) res = true;
   if (res === null) return false;
   S.phase = 'over'; S.busy = false; deselect();
   log(res ? 'Sieg!' : 'Niederlage …', 's');
@@ -4174,7 +4180,7 @@ function buildTerrain0() {
   for (const [c, r] of MAP_SIGNS) { const p = center(c, r); drawSignpost(g, p.x + 13, p.y + 6); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
   if (STYLE === 'sonne') drawSeaBoats(g);
-  for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else boote(g, gp.x, gp.y); }
+  for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else if (kind === 'baumhaus') baumhaus(g, gp.x, gp.y); else boote(g, gp.x, gp.y); }
   // 6) Feines Raster
   g.strokeStyle = 'rgba(20,30,10,0.16)'; g.lineWidth = 1;
   for (const h of hexes) { const { x, y } = center(h.c, h.r); hexPath(g, x, y, R - 0.5); g.stroke(); }
@@ -7589,6 +7595,32 @@ function boote(g, x, y) {
   g.strokeStyle = 'rgba(90,70,40,0.5)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - 4, y + 6); g.quadraticCurveTo(x + 2, y + 14, x + 8, y + 10); g.stroke();
 }
 // Banner auf Eroberungs-Feldern: golden = frei, blau = erobert
+// Großer Felsen (schlafender Steinkrieger)
+function drawBoulder(g, x, y) {
+  g.save();
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x + 3, y + 2, 22, 7, 0, 0, 7); g.fill();
+  const gr = g.createLinearGradient(x - 18, y - 34, x + 16, y);
+  gr.addColorStop(0, '#c9ccc6'); gr.addColorStop(0.55, '#8f948e'); gr.addColorStop(1, '#5e625e');
+  g.fillStyle = gr; g.beginPath();
+  g.moveTo(x - 20, y); g.bezierCurveTo(x - 24, y - 18, x - 12, y - 36, x + 1, y - 34); g.bezierCurveTo(x + 15, y - 32, x + 22, y - 16, x + 19, y); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(40,44,40,.55)'; g.lineWidth = 1.2; g.stroke();
+  g.strokeStyle = 'rgba(40,44,40,.4)'; g.beginPath(); g.moveTo(x - 6, y - 30); g.lineTo(x - 2, y - 18); g.lineTo(x - 8, y - 8); g.moveTo(x + 8, y - 24); g.lineTo(x + 12, y - 12); g.stroke();
+  g.fillStyle = 'rgba(96,150,90,.75)'; g.beginPath(); g.ellipse(x - 6, y - 31, 9, 3.5, -0.3, 0, 7); g.fill(); g.beginPath(); g.ellipse(x + 13, y - 3, 6, 2.5, 0, 0, 7); g.fill();
+  g.restore();
+}
+function baumhaus(g, x, y) {
+  g.save(); g.translate(x, y + 12);
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(0, 2, 22, 6, 0, 0, 7); g.fill();
+  g.fillStyle = '#5a3a24'; g.beginPath(); g.moveTo(-6, 2); g.lineTo(-4, -46); g.lineTo(4, -46); g.lineTo(7, 2); g.closePath(); g.fill();
+  g.strokeStyle = '#3a2416'; g.lineWidth = 1; for (const yy of [-8, -18, -28]) { g.beginPath(); g.moveTo(-5, yy); g.lineTo(5, yy - 2); g.stroke(); }
+  g.fillStyle = '#7a5a36'; g.fillRect(-15, -44, 30, 4);
+  g.fillStyle = '#8a6a44'; g.fillRect(-11, -58, 22, 14); g.fillStyle = '#ffd98a'; g.fillRect(-4, -54, 7, 7);
+  g.fillStyle = 'rgba(255,220,140,.25)'; g.beginPath(); g.arc(0, -50, 16, 0, 7); g.fill();
+  g.fillStyle = '#6b4a2e'; g.beginPath(); g.moveTo(-15, -57); g.lineTo(0, -68); g.lineTo(15, -57); g.closePath(); g.fill();
+  g.strokeStyle = '#a08a5a'; g.lineWidth = 1; g.beginPath(); g.moveTo(9, -44); g.lineTo(9, 0); g.moveTo(13, -44); g.lineTo(13, 0); for (let yy = -40; yy < 0; yy += 6) { g.moveTo(9, yy); g.lineTo(13, yy); } g.stroke();
+  for (const [cx, cy, rr, col] of [[-16, -76, 15, '#2f5a3a'], [8, -82, 17, '#3a6a44'], [-2, -92, 13, '#2a5236'], [18, -70, 11, '#2f5a3a'], [-22, -64, 10, '#3a6a44']]) { g.fillStyle = col; g.beginPath(); g.arc(cx, cy, rr, 0, 7); g.fill(); }
+  g.restore();
+}
 function drawBanner(f, p, done, now) {
   const wv = Math.sin(now / 260 + f.c) * 2.5, x = p.x + R * 0.38, y = p.y + R * 0.35, hgt = R * 1.05;
   ctx.save();
@@ -7903,6 +7935,7 @@ function render(now) {
   requestAnimationFrame(render);
 }
 function drawUnit(u, x, y, now) {
+  if (u.rock && u.dormant) return drawBoulder(ctx, x, y + R * 0.35);
   const done = isDone(u);
   const key = Math.floor(now / 100) + (done ? 'd' : '') + dpr + u.type + (u.face || 0) + (u.striking ? 's' : '');
   if (!u.spr) u.spr = document.createElement('canvas');
@@ -7988,7 +8021,7 @@ function updateUI() {
   const hov = S.hover;
   updateVision();
   let hu = hov ? unitAt(hov.c, hov.r) : null;
-  if (hu && !shown(hu)) hu = null;
+  if (hu && (!shown(hu) || (hu.rock && hu.dormant))) hu = null;
   const show = (S.aiActive && shown(S.aiActive) ? S.aiActive : null) || hu || S.sel;
   let html = '';
   if (show) html += unitHtml(show);
