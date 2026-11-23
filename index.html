@@ -3072,6 +3072,7 @@ const SONNE_MISSIONS = [
  {
   "id": "s2",
   "style": "sonne",
+  "dusk": "nacht",
   "mist": true,
   "bloom": 0.96,
   "title": "Yume no mori",
@@ -3361,7 +3362,7 @@ function makeSecretsFor(spots, fixed) {
 }
 let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], MAP_SEAMIST = false, FOGZONE = new Set(), LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = !!M.dusk; MAP_SEAMIST = !!M.seaMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f]));
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = M.dusk || false; MAP_SEAMIST = !!M.seaMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f]));
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false, captured: {},
@@ -4798,12 +4799,22 @@ function duskLanterns(g) {
   g.save();
   g.globalCompositeOperation = 'multiply';
   const dg = g.createLinearGradient(0, 0, 0, H);
+  // dusk: "nacht" (Rote Sonne M2): Mondnacht in Blau, nur die Laternen im Dorf leuchten noch
+  if (MAP_DUSK === 'nacht') {
+    dg.addColorStop(0, 'rgb(96,108,168)'); dg.addColorStop(1, 'rgb(128,134,182)');
+    g.fillStyle = dg; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'soft-light';
+    const mond = g.createRadialGradient(W * 0.8, -H * 0.1, 0, W * 0.8, -H * 0.1, H * 0.9);
+    mond.addColorStop(0, 'rgba(200,220,255,0.5)'); mond.addColorStop(1, 'rgba(200,220,255,0)');
+    g.fillStyle = mond; g.fillRect(0, 0, W, H);
+  } else {
   dg.addColorStop(0, 'rgb(178,170,215)'); dg.addColorStop(0.55, 'rgb(222,206,214)'); dg.addColorStop(1, 'rgb(244,220,200)');
   g.fillStyle = dg; g.fillRect(0, 0, W, H);
   g.globalCompositeOperation = 'soft-light';
   const sun = g.createRadialGradient(W * 0.5, -H * 0.15, 0, W * 0.5, -H * 0.15, H * 0.9);
   sun.addColorStop(0, 'rgba(255,150,90,0.55)'); sun.addColorStop(1, 'rgba(255,150,90,0)');
   g.fillStyle = sun; g.fillRect(0, 0, W, H);
+  }
   g.restore();
   const spots = [];
   for (const h of HEX.values()) {
@@ -4811,7 +4822,7 @@ function duskLanterns(g) {
     const { x, y } = center(h.c, h.r), side = hash(h.c, h.r, 880) > 0.5 ? 1 : -1, tmp = TEMPLES && TEMPLES.has(K(h.c, h.r));
     spots.push([x + side * (tmp ? 19 : 4), y + (tmp ? 19 : 15), tmp ? 1 : 0]);
   }
-  for (const tr of (MAP_TRAIL || [])) tr.forEach(([c, r], i) => {
+  if (MAP_DUSK !== 'nacht') for (const tr of (MAP_TRAIL || [])) tr.forEach(([c, r], i) => {
     if (i % 2 || r < 6) return;
     const h = HEX.get(K(c, r)); if (!h || h.t === 'v') return;
     const { x, y } = center(c, r); spots.push([x + (i % 4 ? 19 : -19), y + 6, 1]);
