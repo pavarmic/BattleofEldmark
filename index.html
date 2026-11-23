@@ -545,8 +545,8 @@ const TYPES = {
              desc: 'Kokoro aus Kirisato kämpft mit der Naginata ihres Großvaters, einer langen Stangenwaffe mit gebogener Klinge. Einheiten direkt neben ihr greifen mit +1 an. Fällt Kokoro, ist die Schlacht verloren!' },
   reisbauer: { name: 'Reisbauer', icon: '🎋', hp: 22, atk: 6, def: 2, mv: 3, rng: 1, counter: 0.7,
              desc: 'Bauer aus den Reisfeldern mit Bambusspeer und Strohhut. Schwach, aber mutig. Im Reisfeld kommt er so leicht voran wie auf der Wiese.' },
-  yumi:    { name: 'Bogenschützin', icon: '🏹', hp: 20, atk: 6, def: 2, mv: 3, rng: 3, counter: 0.5, hill: true, art: 'Die',
-             desc: 'Schützin mit dem langen Schreinbogen. Fernkampf bis 3 Felder, auf Hügeln +2 Angriff.' },
+  yumi:    { name: 'Bogenschützin', icon: '🏹', hp: 20, atk: 6, def: 2, mv: 3, rng: 3, counter: 0.5, hill: true, fire: true, art: 'Die',
+             desc: 'Schützin mit dem langen Schreinbogen. Fernkampf bis 3 Felder, auf Hügeln +2 Angriff. Schießt Brandpfeile: Holzkrieger fangen Feuer und brennen 3 Runden lang.' },
   holz:    { name: 'Holzkrieger', icon: '🪵', hp: 24, atk: 6, def: 4, mv: 3, rng: 1, counter: 0.7, wood: true,
              desc: 'Ein Seelenloser aus dunklem Holz, die leichteste der drei Rüstungen. Statt eines Gesichts trägt er eine glatte Maske. Holz brennt: Brandpfeile setzen ihn in Flammen.' },
   stein:   { name: 'Steinkrieger', icon: '🗿', hp: 36, atk: 8, def: 6, mv: 2, rng: 1, counter: 1.0, stone: true,
@@ -589,8 +589,8 @@ const TYPES = {
              desc: 'Der König der Oni, ein riesiger Dämonenfürst mit fünf Hörnern, silbernem Haar und prächtigem Kimono. Er liebt Sake und schwingt ein gewaltiges Schwert.' },
   oger:    { name: 'Oger', icon: '🪨', hp: 55, atk: 10, def: 4, mv: 2, rng: 1, counter: 0.9, art: 'Der',
              desc: 'Ein plumper Berg-Oger mit warziger Haut, der einen ganzen Baumstamm als Keule schwingt. Langsam, aber jeder Schlag zertrümmert, was er trifft.' },
-  flussdrache: { name: 'Flussdrache', icon: '🐉', hp: 50, atk: 10, def: 5, mv: 4, rng: 1, counter: 0.9, art: 'Der',
-             desc: 'Ein gütiger Drache der Flüsse mit türkisen Schuppen und einer leuchtenden Perle. Er wacht über Wasser und Reisfelder.' },
+  flussdrache: { name: 'Flussdrache', icon: '🐉', hp: 50, atk: 10, def: 5, mv: 4, rng: 1, counter: 0.9, swim: true, art: 'Der',
+             desc: 'Ein gütiger Drache der Flüsse mit türkisen Schuppen und einer leuchtenden Perle. Er wacht über Wasser und Reisfelder. Er zieht friedlich durch den Fluss, greift niemanden an und lässt sich von niemandem angreifen.' },
   terrakotta: { name: 'Terrakotta-Drache', icon: '🏺', hp: 60, atk: 11, def: 8, mv: 2, rng: 1, counter: 1.0, stone: true, art: 'Der',
              desc: 'Ein Drache aus gebranntem Ton, durch dessen Risse ein glühender Schein dringt. Schwer, langsam und kaum zu verwunden. Spitzhacken setzen ihm zu.' },
   samurai: { name: 'Samurai des reinen Blutes', icon: '⛩️', hp: 40, atk: 10, def: 7, mv: 3, rng: 1, counter: 1.0, art: 'Der',
@@ -663,8 +663,8 @@ function addUnit(type, side, c, r, wild = false) {
   S.units.push(u);
   return u;
 }
-const factionOf = u => u.side === 2 ? 'Dunkelwölfe' : u.wild ? (CUR.wildName || 'Uraltes Wesen') : FACTION[u.side];
-const foesOf = u => S.units.filter(o => o.hp > 0 && o.side !== u.side);
+const factionOf = u => u.peace ? 'Neutral' : u.side === 2 ? 'Dunkelwölfe' : u.wild ? (CUR.wildName || 'Uraltes Wesen') : FACTION[u.side];
+const foesOf = u => u.peace ? [] : S.units.filter(o => o.hp > 0 && o.side !== u.side && !o.peace); // Neutrale (Flussdrache) greifen nicht an und werden nicht angegriffen
 
 // ---------- Geheime Orte ----------
 const SECRET_SPOTS = [
@@ -3103,6 +3103,7 @@ const SONNE_MISSIONS = [
   "slots": [[37, 10], [38, 9], [37, 9], [38, 11], [37, 11], [36, 10], [38, 8], [36, 9], [36, 11], [37, 12], [38, 12], [37, 8]],
   "joinUnits": ["tamashi_k", "yumi"],
   "join": [[38, 10], [36, 8]],
+  "neutral": [["flussdrache", 17, 4]],
   "enemy": [["onibi", 23, 4, "wild"], ["onibi", 10, 16, "wild"], ["onibi", 20, 16, "wild"], ["stein", 12, 9, "rock"], ["stein", 13, 11, "rock"], ["stein", 10, 10, "rock"]],
   "secrets": [{"c": 22, "r": 3, "name": "Fuchsbau", "kind": "hoehle"}, {"c": 13, "r": 16, "name": "Moosiger Stein", "kind": "schrein"}, {"c": 9, "r": 5, "name": "Moosschrein", "kind": "schrein"}],
   "secretDeck": [{"kind": "ally", "unit": "kitsune", "text": "Zwischen den Wurzeln glimmen zwei Augen, dann ein blaues Flämmchen. Eine weiße Füchsin mit zwei Schwänzen tritt heraus: ein <b>Kitsune</b>, ein Fuchsgeist. Sie mustert {HERO} lange. „Du hast ein Herz, das brennt. Ich gehe ein Stück mit dir.“"}, {"kind": "monster", "unit": "onibi", "text": "Plötzlich schwebt ein blaues Licht hervor. Kein Glühwürmchen: ein <b>Irrlicht</b>, ein böser Waldgeist. Es kichert und stürzt sich auf euch!"}, {"kind": "leer", "text": "Nur Moos, ein paar Pilze und der Ruf eines Käuzchens. Hier ist niemand."}],
@@ -3389,6 +3390,7 @@ function setupBattle(M, roster) {
     roster.forEach((v, i) => { const sp = spotFor(i); if (!sp) return; taken.add(K(sp[0], sp[1])); const u = addUnit(v.type, 0, sp[0], sp[1]); u.xp = u.xp0 = v.xp; u.lvl = u.lvl0 = v.lvl; u.kills = u.k0 = v.kills || 0; u.hp = maxHp(u); });
     (M.joinUnits || []).forEach((t, i) => { const [c, r] = M.join[i]; addUnit(t, 0, c, r); });
     S.fired = {};
+    for (const [t, c, r] of M.neutral || []) { const u = addUnit(t, 2, c, r, true); u.peace = true; u.dir = 1; }
     for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r, flag === 'wild'); if (flag === 'wild') u.waitR = 3; if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; if (flag === 'rock') u.dormant = u.rock = true; u.post = [c, r]; foeVet(u, M); }
   }
   document.getElementById('log').innerHTML = '';
@@ -3578,6 +3580,7 @@ function missionResult(win) {
 // ---------- Bewegung ----------
 function moveCost(u, c, r) {
   const t = terr(c, r);
+  if (TYPES[u.type].swim) return t === 'w' || t === 'u' ? 1 : Infinity; // schwimmt nur im Fluss
   if (TYPES[u.type].fly) return 1; // fliegt über alles hinweg, auch über Mauern, Türme und Häuser
   if (t === 'n' && !GATE_OPEN) return Infinity;
   if (t === 'f' && TYPES[u.type].oak) return 0.5;
@@ -3589,7 +3592,8 @@ function moveCost(u, c, r) {
   return TER[t].cost;
 }
 function inZoc(u, c, r) {
-  return neighbors(c, r).some(([nc, nr]) => { const o = unitAt(nc, nr); return o && o.side !== u.side; });
+  if (u.peace) return false;
+  return neighbors(c, r).some(([nc, nr]) => { const o = unitAt(nc, nr); return o && o.side !== u.side && !o.peace; });
 }
 function reachable(u) {
   const T = TYPES[u.type], sk = K(u.c, u.r);
@@ -3860,7 +3864,7 @@ async function animAttack(a, d) {
   if (Math.abs(pd.x - pa.x) > 1) { a.face = pd.x > pa.x ? 1 : -1; if (hexDist(a.c, a.r, d.c, d.r) <= 1) d.face = -a.face; }
   if (hexDist(a.c, a.r, d.c, d.r) > 1) {
     if (PAINTED[a.type]) { a.striking = true; await tween(220, () => {}); }
-    const color = TYPES[a.type].bolt || (TYPES[a.type].magic ? (a.side ? '#c58cff' : '#9ff3ff') : '#f4e3b0');
+    const color = TYPES[a.type].bolt || (TYPES[a.type].magic ? (a.side ? '#c58cff' : '#9ff3ff') : TYPES[a.type].fire ? '#ff9a3c' : '#f4e3b0');
     await tween(280, k => { S.proj = { x: pa.x + (pd.x - pa.x) * k, y: pa.y + (pd.y - pa.y) * k - Math.sin(k * Math.PI) * (TYPES[a.type].siege ? 75 : 22), color: TYPES[a.type].siege ? '#8a8476' : color, magic: TYPES[a.type].magic, rock: TYPES[a.type].siege }; });
     S.proj = null; a.striking = false;
   } else {
@@ -3913,12 +3917,12 @@ async function endTurn() {
   finishSide(1);
   if (alive(2).length) {
     startSide(2);
-    showBanner('Die Dunkelwölfe jagen …', `Runde ${S.turn}`, true);
-    await sleep(1100);
+    const still = alive(2).every(u => u.peace);
+    if (!still) { showBanner('Die Dunkelwölfe jagen …', `Runde ${S.turn}`, true); await sleep(1100); }
     for (const u of alive(2)) {
       if (u.hp <= 0) continue;
       S.aiActive = u; updateUI(); if (shown(u)) { ensureVisible(u.c, u.r); await sleep(150); }
-      await aiAct(u);
+      if (u.peace) await neutralAct(u); else await aiAct(u);
       S.aiActive = null;
       if (checkEnd()) return;
       await sleep(180);
@@ -3930,7 +3934,7 @@ async function endTurn() {
   for (const R of S.mission.reinforce || []) if (R.turn === S.turn) await reinforce(R);
   if (S.mission.triggers) await runTriggers();
   if (S.mission.storm && S.stormTurn && !S.goalReached) {
-    const n = alive(1).length + alive(2).length;
+    const n = alive(1).length + alive(2).filter(u => !u.peace).length;
     if (n) log(`Noch ${n} Feind(e) in Eldor. Besiegt sie alle!`, 'e');
   }
   S.phase = 'player'; S.busy = false;
@@ -3945,7 +3949,7 @@ async function endTurn() {
 function checkEnd() {
   const M = S.mission;
   const heroAlive = M.skirmish || alive(0).some(u => TYPES[u.type].hero);
-  const p = alive(0).length, e = alive(1).length + alive(2).length;
+  const p = alive(0).length, e = alive(1).length + alive(2).filter(u => !u.peace).length;
   let res = null;
   const protLost = S.units.some(u => u.side === 0 && TYPES[u.type].protect && u.hp <= 0);
   if (!p || !heroAlive || protLost) res = false;
@@ -4042,6 +4046,18 @@ async function aiAct(u) {
     if (v < bv) { bv = v; bk = k; }
   }
   if (bk !== sk) await moveUnit(u, reach, bk);
+}
+// Neutrale Wesen (Flussdrache) ziehen friedlich den Fluss auf und ab
+async function neutralAct(u) {
+  const reach = reachable(u), sk = K(u.c, u.r);
+  const ok = [...reach.entries()].filter(([k, n]) => k !== sk && terr(n.c, n.r) === 'w' && !unitAt(n.c, n.r));
+  let best = null;
+  for (let tries = 0; tries < 2 && !best; tries++) {
+    for (const [k, n] of ok) { const g = (n.r - u.r) * (u.dir || 1); if (g > 0 && (!best || g > best.g)) best = { k, g }; }
+    if (!best) u.dir = -(u.dir || 1);
+  }
+  if (best) await moveUnit(u, reach, best.k);
+  u.moved = u.acted = true;
 }
 async function moveUnit(u, reach, k) {
   const path = pathTo(reach, k);
