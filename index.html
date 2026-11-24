@@ -3191,6 +3191,65 @@ const SONNE_MISSIONS = [
   "triggers": [{"id": "schatten", "turn": 2, "spawn": [["spaeher", 39, 21], ["spaeher", 39, 23]], "shout": "…", "img": "spaeher", "imgSide": 1, "look": [38, 22], "place": "Im dunklen Wald", "title": "Die Schatten jagen euch", "log": "Schattenspäher folgen euch von hinten!", "text": "Hinter euch kräuselt sich Rauch zwischen den Stämmen. Die Schatten haben eure Spur gefunden und jagen euch von hinten. Bleibt dicht beieinander!"}, {"id": "ueberfall1", "near": [28, 21], "d": 1, "spawn": [["holz", 27, 18], ["holz", 28, 24]], "shout": "Krrr!", "img": "holz", "imgSide": 1, "look": [28, 21], "place": "Im dunklen Wald", "title": "Überfall!", "log": "Holzkrieger brechen aus dem Unterholz!", "text": "Der Wald wird immer dunkler, die Kirschbäume sind ganz verschwunden. Plötzlich bricht es links und rechts aus dem Unterholz: <b>Holzkrieger</b>!<br><br><small>Holz brennt! Die Brandpfeile von Honoo und den Bogenschützinnen helfen.</small>"}, {"id": "mehrschatten", "after": "ueberfall1", "turn": 3, "spawn": [["spaeher", 39, 22], ["spaeher", 36, 18]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im dunklen Wald", "title": "Die Schatten geben nicht auf", "log": "Noch mehr Schatten folgen euch!", "text": "Wieder kräuselt sich Rauch hinter euch. Die Schatten geben nicht auf."}, {"id": "lichtung", "near": [20, 21], "d": 2, "west": 19, "allies": [["kitsune", 18, 21]], "img": "kitsune", "look": [19, 21], "place": "Auf der Lichtung", "title": "Es riecht nach Fuchs", "text": "Auf einer Lichtung bleibt der Tanuki stehen und schnuppert. „Es riecht nach Fuchs …“<br><br>{HERO} geht nach vorne, schnappt sich einen Bauern und sucht die Gegend ab. Da sitzt er: ein roter <b>Fuchs</b>, ganz ohne Scheu.<br><br>„Nerven euch diese dämlichen Gestalten auch so wie mich?“ Der Fuchs erzählt von seinem Ärger mit den Seelenlosen und schließt sich euch an."}, {"id": "ueberfall2", "after": "lichtung", "near": [15, 20], "d": 1, "spawn": [["holz", 14, 17], ["holz", 13, 24]], "shout": "Krrr!", "img": "holz", "imgSide": 1, "look": [15, 20], "place": "Im Nebelwald", "title": "Noch ein Überfall!", "log": "Wieder Holzkrieger!", "text": "Es wird immer nebliger. Ihr seht immer weniger, und es riecht nach Meer. Da: Schon wieder brechen <b>Holzkrieger</b> aus dem Nebel!"}, {"id": "waldrand", "after": "lichtung", "near": [9, 20], "d": 2, "west": 10, "leave": "kitsune", "fire": [[7, 1]], "lure": ["kaltwind", 7, 1, 4], "img": "kaltwind", "imgSide": 1, "look": [7, 4], "place": "Am Waldrand", "title": "Der Plan des Fuchses", "text": "Am Waldrand bleibt der Fuchs stehen. „Ihr müsst hier warten! Die <b>Reiter der Seelenlosen</b> kontrollieren den Strand, sie dürfen euch nicht sehen. Aber ich habe da eine Idee. Ich bin nur ein Fuchs, für mich interessieren sie sich nicht. Ich gehe ein Stück nach Norden und entzünde eins ihrer Alarmfeuer. Wenn die Reiter alle dorthin reiten, lauft ihr schnell nach Süden. Nicht weit von hier lebt ein Fischer. Schnappt seine Boote, nehmt ihn mit, rudert in den Nebel und dann zum Hafen.“<br><br>„Was ist mit dir?“, fragt {HERO}.<br><br>„Mit mir? Was soll mit mir sein? Ich bin ein Fuchs, ich kann mir sehr gut selbst helfen!“ Und weg ist er.<br><br><small>Im Norden brennt das Alarmfeuer. Die Reiter sind eine Weile abgelenkt. Schnell nach Süden zur Fischerhütte!</small>"}],
   "outro": "Die Boote gleiten lautlos durch den Nebel. Niemand spricht. Nur die Ruder tauchen ein, immer wieder. Hinter ihnen, irgendwo am Strand, wiehern die Pferde der Reiter, doch sie finden niemanden mehr.<br><br>Dann blinken vor ihnen Lichter auf: der Hafen. Jirō flüstert: „Früher kamen hier jeden Tag Boote an. Jetzt gehört er den Seelenlosen.“<br><br>{HERO} denkt an den Fuchs. Ob sie ihn wiedersehen? Irgendetwas sagt ihr: ganz bestimmt.",
   "reward": []
+ },
+ {
+  "id": "s4",
+  "style": "sonne",
+  "dusk": "nacht",
+  "seaMist": true,
+  "mist": true,
+  "boats": true,
+  "title": "Yumenoshima",
+  "sub": "Der Hafen der Träume",
+  "map": [
+   "wwwwwwwwwwwhhf...ffff.fff..f.fffff.f.f.f",
+   "wwwwwwwwwwwhh...ffffff..ffff.ffff...ffff",
+   "wwwwwwwwwwwwhhfff....f.fffff.ff...ffff.f",
+   "wwwwwwwwwwwwffff.ffff..fff.ffffff.ffff.f",
+   "wwwwwwwwwwwwfhf...ffff.fffffffffff.f.fff",
+   "wwwwwwwwwwwwhh.ff.ff.fffff.ff.fffffff.ff",
+   "wwwwwwwwwwwhhf.f.ffffff.fff..fff.ffffff.",
+   "wwwwwwwwwwwhff..fffff.f.f.ffffffff.f.fff",
+   "wwwwwwwwwwffff.ffffffffff.fffffffff..f..",
+   "wwwwwwwwwwwhf.ff..ff.fff.f...ffffffff.ff",
+   "wwwwwwwwwwhwwdd...v.v...v.....v..vv.vv.v",
+   "wwwwwwwwwwddwwddv.vvv.vv.v..vvd..vvv.v..",
+   "wwwwwwwwwwwfddwwd.vv..v...vv.dddvvvv.vvv",
+   "wwwwwwwwwwwffddwddvv.vv.v.vddv.ddvv.v...",
+   "wwwwwwwwwwwwfvvdwdddvv...v.d...vvd..v...",
+   "wwwwwwwwwwwwf.dwd.vddv...ddv..vv.d..vv.v",
+   "wwwwwwwwwwwwf.vdwd...ddv.d..vv....dv..v.",
+   "wwwwwwwwwwwwf.ddwdddv.dvd......v.vdd..v.",
+   "wwwwwwwwwwwffvdwwwwwdvdddvv....vv.v.d...",
+   "wwwwwwwwwwwffdwwwwwwd.dv....v.v.vvv.d.v.",
+   "wwwwwwwwwwfffdwwwwwwwddv.v.vvvv.....d...",
+   "wwwwwwwwwwdddwwwwwwwwd..v.....v.v.ddvvv.",
+   "wwwwwwwwwwwwwwwwwwwwwwd.vv.vvvv...d..vv.",
+   "wwwwwwwwwwwwwwwwwwwwwd..vvvv...vvvdv....",
+   "wwwwwwwwwwddddwwwwwwwdvvvvvv.v.....d....",
+   "wwwwwwwwwwwffdwwwwwwdv..vv.vv..vv.vdv.vv",
+   "wwwwwwwwwwwff.dwwwwwd...v.....v...v..v..",
+   "wwwwwwwwwwwwf.dddddd..v.........vv....vv",
+   "wwwwwwwwwwwwfv...v...v...v.v.vv...vv.vv.",
+   "wwwwwwwwwwwwf..v....vv..v.v..v.v.vvv.v.v"
+  ],
+  "trails": [[[16, 12], [16, 13], [17, 13], [18, 14], [19, 14], [19, 15], [20, 15], [21, 16], [22, 16], [22, 17], [22, 18], [22, 19], [22, 20], [22, 20], [22, 19], [23, 18], [24, 18], [24, 17], [25, 16], [25, 15], [26, 15], [27, 14], [27, 13], [28, 13], [29, 12], [30, 12], [30, 11], [30, 11], [31, 12], [31, 13], [32, 13], [33, 14], [33, 15], [34, 16], [34, 17], [35, 17], [36, 18], [36, 19], [36, 20], [35, 21], [34, 21], [34, 22], [34, 23], [35, 24], [35, 25]]],
+  "slots": [[3, 1], [4, 1], [5, 1], [3, 2], [4, 2], [5, 2], [6, 2], [3, 3], [4, 3], [5, 3], [6, 3], [4, 0]],
+  "joinUnits": ["tamashi_k"],
+  "join": [[6, 1]],
+  "decos": [["leuchtturm", 11, 25], ["boote", 21, 24]],
+  "enemy": [["stein", 10, 21, "guard"], ["stein", 10, 24, "guard"], ["spaeher", 26, 15, "wait"], ["spaeher", 31, 20, "wait"]],
+  "secrets": [{"c": 23, "r": 13, "name": "Verlassener Speicher", "kind": "hoehle"}, {"c": 29, "r": 26, "name": "Kleiner Hafenschrein", "kind": "schrein"}, {"c": 37, "r": 15, "name": "Dunkle Hintergasse", "kind": "hoehle"}],
+  "secretDeck": [{"kind": "ally", "unit": "netzbauer", "text": "Hinter einem Stapel Kisten kauert ein junger Hafenarbeiter mit einem Fischernetz. „Ihr seid die aus Kirisato, oder? Die Leute erzählen von euch.“ Er strafft die Schultern. „Ich komme mit.“"}, {"kind": "monster", "unit": "kappa", "text": "Unter dem Steg platscht es. Ein <b>Kappa</b> zieht sich aus dem schwarzen Wasser, die Wasserschale auf dem Kopf glänzt im Mondlicht. Er grinst böse."}, {"kind": "leer", "text": "Nur leere Fässer, nasse Netze und der Geruch von Salz. Hier ist niemand."}],
+  "critters": [],
+  "foeLvl": 0,
+  "foeUp": 0,
+  "intro": "Die Boote gleiten an der Küste entlang. Rechts ragen dunkle Klippen aus dem Wasser, links ist nichts als grauer Nebel. Niemand spricht, nur die Ruder tauchen ein, immer wieder.<br><br>Irgendwo vor ihnen liegt <b>Yumenoshima</b>, der Hafen der Träume. Dort lebt Kokoros Onkel <b>Takeo</b>, der Laternenmacher, Tamashis Bruder. Wenn ihnen jemand helfen kann, dann er.<br><br><small>Rudert an der Küste entlang nach Süden. Ihr sitzt in Booten und könnt nur über das Wasser fahren, bis ihr anlegt.</small>",
+  "goalText": "Rudert durch den Nebel von hinten in den Hafen, legt an und sucht Onkel Takeo in der Hafenstadt. Tamashi darf nicht fallen.",
+  "captures": [{"id": "anleger", "c": 16, "r": 12, "name": "Alter Anleger", "deco": "boote", "place": "Am alten Anleger", "title": "An Land", "text": "Ganz hinten im Hafen, wo das Schilf hoch steht, liegt ein alter, halb verfallener Anleger. Hier legen sie an. Die Boote binden sie gut fest, man weiß nie.<br><br>Die Stadt schläft. Nur hier und da brennt eine Laterne. Doch zwischen den Häusern bewegt sich etwas. Schatten.<br><br>„Wo wohnt Onkel Takeo?“, flüstert Honoo. {HERO} zuckt mit den Schultern. „Ich war ein kleines Mädchen, als wir ihn besucht haben. Irgendwo bei einem Markt.“<br><br><small>Sucht den Fischmarkt am Hafenbecken.</small>"}, {"id": "markt", "c": 22, "r": 20, "name": "Fischmarkt", "deco": "huette", "needs": ["anleger"], "img": "netzbauer", "place": "Auf dem Fischmarkt", "title": "Die Fischfrau", "text": "Der Fischmarkt ist leer, die Stände sind mit Tüchern abgedeckt. Nur eine alte Fischfrau sitzt noch da und flickt ein Netz, als wäre nichts.<br><br>„Takeo? Der Laternenmacher?“ Sie schaut sich um und senkt die Stimme. „Seit der Nacht der Laternen hat ihn keiner mehr gesehen. Er ist über vierzig, Kind. Er versteckt sich. Frag im <b>Teehaus</b> oben am Hang, die Wirtin weiß mehr.“<br><br>Da knackt es hinter den Ständen.<br><br><small>Sucht das Teehaus am Hang im Nordosten.</small>"}, {"id": "teehaus", "c": 30, "r": 11, "name": "Teehaus", "needs": ["markt"], "place": "Im Teehaus", "title": "Die Wirtin", "text": "Im Teehaus brennt ein einziges Licht. Die Wirtin erschrickt, dann erkennt sie Tamashi. „Du siehst aus wie dein Bruder!“<br><br>Sie zieht {HERO} in eine Ecke. „Takeo lebt. Er hat sich in seiner alten <b>Laternenwerkstatt</b> versteckt, unten im Süden, in der Gasse hinter dem Hafenschrein. Die Schatten suchen jede Nacht nach ihm. Geht schnell, und geht leise.“<br><br><small>Sucht die Laternenwerkstatt im Süden der Stadt.</small>"}, {"id": "werkstatt", "c": 35, "r": 25, "name": "Laternenwerkstatt", "needs": ["teehaus"], "win": true, "heal": 4, "place": "In der Laternenwerkstatt", "title": "Onkel Takeo", "text": "Die Tür der Werkstatt ist verriegelt. {HERO} klopft leise, dreimal. Dann öffnet sich ein Spalt, und ein Mann mit grauem Bart und farbverschmierten Händen späht heraus.<br><br>„Kokoro? Bei allen Laternen … Tamashi!“ Er umarmt seine Schwester so fest, dass sie lachen muss. „Kommt herein, alle. Schnell!“<br><br>Drinnen hängen hunderte Laternen von der Decke, rot, weiß und golden. Hier dürfen sie bleiben."}],
+  "triggers": [{"id": "nebel", "near": [10, 9], "d": 3, "look": [11, 22], "img": "stein", "imgSide": 1, "place": "Im Nebel vor dem Hafen", "title": "Der Hafen der Träume", "text": "Langsam schält sich der Hafen aus dem Nebel: Laternen, Dächer, Masten. Vorne an der großen Einfahrt stehen zwei <b>Steinkrieger</b> auf den Kais und starren aufs Wasser.<br><br>„Da vorne kommen wir nicht durch“, flüstert {HERO}. „Aber da hinten, im Schilf … da ist ein schmaler Kanal.“<br><br><small>Rudert durch den schmalen Kanal von hinten in den Hafen und legt am alten Anleger an.</small>"}, {"id": "verfolger1", "captured": "anleger", "spawn": [["spaeher", 20, 10]], "shout": "…", "danger": true, "img": "spaeher", "imgSide": 1, "place": "In den Gassen", "title": "Schatten!", "log": "Ein Schatten springt aus einer Gasse!", "text": "Kaum stehen sie an Land, löst sich ein <b>Schattenspäher</b> aus der Dunkelheit zwischen zwei Häusern."}, {"id": "markt_schatten", "captured": "markt", "spawn": [["spaeher", 26, 21], ["spaeher", 18, 17]], "shout": "…", "log": "Schatten kriechen aus den Gassen!"}, {"id": "teehaus_schatten", "captured": "teehaus", "spawn": [["spaeher", 33, 9], ["spaeher", 27, 9], ["onibi", 31, 14]], "shout": "…", "log": "Schatten und ein Irrlicht vor dem Teehaus!", "img": "onibi", "imgSide": 1, "place": "Vor dem Teehaus", "title": "Sie haben euch gesehen", "text": "Als ihr aus dem Teehaus tretet, wartet draußen schon die Dunkelheit: Schatten, und dazwischen ein kaltes blaues <b>Irrlicht</b>."}, {"id": "verfolger2", "after": "verfolger1", "turn": 3, "spawn": [["spaeher", 24, 27]], "shout": "…", "log": "Wieder ein Schatten in eurem Rücken!"}, {"id": "verfolger3", "after": "verfolger2", "turn": 3, "spawn": [["spaeher", 38, 18]], "shout": "…", "log": "Die Schatten geben nicht auf!"}],
+  "outro": "In der Werkstatt ist es warm. Takeo kocht Reissuppe, und zum ersten Mal seit Tagen essen alle, bis sie satt sind. Draußen huschen Schatten an den Fenstern vorbei, doch das Licht der vielen Laternen hält sie fern.<br><br>Später, als die anderen schlafen, sitzen Takeo, Tamashi und {HERO} noch zusammen. „Ihr wollt zum Kalten König?“, fragt Takeo leise. „Dann braucht ihr mehr als Mut. Ihr braucht ein Schiff. Und ich weiß, wo eins liegt.“",
+  "reward": []
  }
 ];
 
@@ -3401,8 +3460,9 @@ function setupBattle(M, roster) {
     for (const [t, sd, c, r] of M.units) addUnit(t, sd, c, r);
   } else {
     // Mehr Einheiten als Startplätze? Dann die nächsten freien Felder bei den Startplätzen nehmen.
+    S.boats = !!M.boats; // Mission beginnt in den Booten
     const taken = new Set(), enemyAt = new Set(M.enemy.map(([t, c, r]) => K(c, r)));
-    const okHex = (c, r) => HEX.has(K(c, r)) && isFinite(TER[terr(c, r)].cost) && !taken.has(K(c, r)) && !enemyAt.has(K(c, r));
+    const okHex = (c, r) => HEX.has(K(c, r)) && (isFinite(TER[terr(c, r)].cost) || (M.boats && terr(c, r) === 'w')) && !taken.has(K(c, r)) && !enemyAt.has(K(c, r));
     const spotFor = i => {
       if (M.slots[i] && okHex(...M.slots[i])) return M.slots[i];
       const q = M.slots.map(s => s.slice()), seen = new Set(q.map(([c, r]) => K(c, r)));
