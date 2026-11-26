@@ -590,7 +590,7 @@ const TYPES = {
   oger:    { name: 'Oger', icon: '🪨', hp: 55, atk: 10, def: 4, mv: 2, rng: 1, counter: 0.9, art: 'Der',
              desc: 'Ein plumper Berg-Oger mit warziger Haut, der einen ganzen Baumstamm als Keule schwingt. Langsam, aber jeder Schlag zertrümmert, was er trifft.' },
   flussdrache: { name: 'Flussdrache', icon: '🐉', hp: 50, atk: 10, def: 5, mv: 4, rng: 1, counter: 0.9, swim: true, art: 'Der',
-             desc: 'Ein gütiger Drache der Flüsse mit türkisen Schuppen und einer leuchtenden Perle. Er wacht über Wasser und Reisfelder. Er zieht friedlich durch den Fluss, greift niemanden an und lässt sich von niemandem angreifen.' },
+             desc: 'Ein gütiger Drache der Flüsse mit türkisen Schuppen und einer leuchtenden Perle. Er wacht über Wasser und Reisfelder. Er schwimmt friedlich den Fluss hinab nach Süden, greift niemanden an und lässt sich von niemandem angreifen.' },
   terrakotta: { name: 'Terrakotta-Drache', icon: '🏺', hp: 60, atk: 11, def: 8, mv: 2, rng: 1, counter: 1.0, stone: true, art: 'Der',
              desc: 'Ein Drache aus gebranntem Ton, durch dessen Risse ein glühender Schein dringt. Schwer, langsam und kaum zu verwunden. Spitzhacken setzen ihm zu.' },
   samurai: { name: 'Samurai des reinen Blutes', icon: '⛩️', hp: 40, atk: 10, def: 7, mv: 3, rng: 1, counter: 1.0, art: 'Der',
@@ -809,6 +809,7 @@ async function fireEvent(T) {
       const u = addUnit(t, 0, sp[0], sp[1]); fxText(u, 'Zu Hilfe!', '#9cff9c'); first = first || u;
     }
     if (T.sanctuary) S.sanctuary = T.sanctuary;
+    for (const [t, c, r] of T.neutral || []) { const u = addUnit(t, 2, c, r, true); u.peace = true; u.moved = u.acted = true; } // friedliches Wesen taucht auf
     // Ein Freund geht eigene Wege (verschwindet, ohne zu fallen)
     if (T.leave) for (const u of alive(0).filter(u => u.type === T.leave)) { fxText(u, 'Bis bald!', '#ffd9a0'); if (S.sel === u) deselect(); S.units.splice(S.units.indexOf(u), 1); }
     // Feuer entzünden (z. B. ein Alarmfeuer)
@@ -3088,7 +3089,7 @@ const SONNE_MISSIONS = [
   "map": [
    "ffffff.fffffff.fw..f.fff.f.......f...fff",
    "ffffffffffffffffwffffffff....f....ff.fff",
-   "ffff.f.f..fff..fwf.ffffff...............",
+   "ffff.f.f..fff..fww.ffffff...............",
    "ffff..ffff.ffff.fwfffffffff.............",
    "ffff.ffffff..ffffwfffffffff.h...........",
    "ffffff.ffffffffffwffff.fff.hh...R.RRR.v.",
@@ -3099,7 +3100,7 @@ const SONNE_MISSIONS = [
    "ff.fff....f.f.ffu..f..f..f.....R.R......",
    "f..f.ffff...ff.fwff.fff.f.f.....RR......",
    "f.fffff.ffffffffwfffff...ff....RRRRRR..v",
-   "ff.fffffffffffffwfff.ffffff...RR.RR.RRv.",
+   "ff.ffffffffffffwwfff.ffffff...RR.RR.RRv.",
    ".f.f..fffffffffwffff.fffff.hhh..RRR.R..v",
    "fffffffffff.ff.wfffff.ffff.hh...........",
    "f.ff.ffffffffffwf.fffff..f..h...........",
@@ -3111,7 +3112,6 @@ const SONNE_MISSIONS = [
   "slots": [[37, 10], [38, 9], [37, 9], [38, 11], [37, 11], [36, 10], [38, 8], [36, 9], [36, 11], [37, 12], [38, 12], [37, 8]],
   "joinUnits": ["tamashi_k", "yumi"],
   "join": [[38, 10], [36, 8]],
-  "neutral": [["flussdrache", 17, 4]],
   "enemy": [["onibi", 23, 4, "wild"], ["onibi", 10, 16, "wild"], ["onibi", 20, 16, "wild"], ["stein", 12, 9, "rock"], ["stein", 13, 11, "rock"], ["stein", 10, 10, "rock"]],
   "secrets": [{"c": 22, "r": 3, "name": "Alter Bau", "kind": "hoehle"}, {"c": 13, "r": 16, "name": "Moosiger Stein", "kind": "schrein"}, {"c": 9, "r": 5, "name": "Moosschrein", "kind": "schrein"}],
   "secretDeck": [{"kind": "leer", "text": "Unter den Wurzeln liegt nur trockenes Laub. Irgendwer hat hier einmal gewohnt, doch jetzt ist alles leer."}, {"kind": "monster", "unit": "onibi", "text": "Plötzlich schwebt ein blaues Licht hervor. Kein Glühwürmchen: ein <b>Irrlicht</b>, ein böser Waldgeist. Es kichert und stürzt sich auf euch!"}, {"kind": "leer", "text": "Nur Moos, ein paar Pilze und der Ruf eines Käuzchens. Hier ist niemand."}],
@@ -3120,10 +3120,10 @@ const SONNE_MISSIONS = [
   "foeUp": 0,
   "intro": "Kokoro, Honoo und Tamashi rennen aus dem Dorf, immer nach Westen. Am Ende von Kirisato schließt sich ihnen noch eine <b>Bogenschützin</b> an. Hinter ihnen brennen die Laternen, und die Seelenlosen ziehen durch die Gassen.<br><br>Über die Felder zwischen den beiden Hügeln geht es zum Waldrand. Dahinter liegt der <b>Yume no mori</b>, der Traumwald. Niemand weiß, was sie dort erwartet.",
   "goalText": "Folgt dem Weg durch den Traumwald bis zur Kreuzung und sucht dann das Licht im Wald. Tamashi darf nicht fallen.",
-  "triggers": [{"id": "bauer", "near": [23, 11], "d": 1, "spawnRear": "spaeher", "danger": true, "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Ein Schrei!", "log": "Ein Schatten greift von hinten an!", "text": "Da! Hinter euch schreit jemand auf. Ein <b>Schattenspäher</b> ist aus dem Dunkel gesprungen und greift von hinten an!<br><br><small>Schnell, helft ihm! Schatten lösen sich in Rauch auf, wenn man sie besiegt.</small>"}, {"id": "verfolger", "after": "bauer", "turn": 2, "spawn": [["spaeher", 39, 9], ["spaeher", 39, 11]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Sie folgen euch", "log": "Weitere Schattenspäher folgen eurer Spur!", "text": "Weit hinter euch, am Waldrand, lösen sich zwei weitere Schatten aus der Nacht. Sie haben eure Spur."}, {"id": "hinterhalt", "near": [20, 10], "d": 1, "spawn": [["holz", 18, 7], ["holz", 18, 13]], "shout": "Krrr!", "img": "holz", "imgSide": 1, "look": [18, 10], "place": "Im Traumwald", "title": "Holzkrieger!", "log": "Links und rechts brechen Holzkrieger aus dem Wald!", "text": "Plötzlich bricht es vor euch links und rechts aus dem Unterholz: <b>Holzkrieger</b>! Sie haben auf euch gewartet.<br><br><small>Holz brennt! Brandpfeile von Honoo und den Bogenschützen helfen.</small>"}, {"id": "felsen", "near": [12, 10], "d": 3, "awaken": true, "danger": true, "shout": "Knirsch …", "img": "stein", "imgSide": 1, "look": [12, 10], "place": "Bei den drei Felsen", "title": "Die Felsen erwachen!", "log": "Die drei Felsen verwandeln sich in Steinkrieger!", "text": "Am Weg liegen drei große, moosige Felsen. Als ihr vorbeigeht, knirscht es. Die Felsen richten sich auf, Arme wachsen aus dem Stein: <b>Steinkrieger</b>!<br><br><small>Pfeile prallen an Stein ab. Werft die Netze!</small>"}, {"id": "nachschub", "after": "verfolger", "turn": 4, "spawn": [["spaeher", 39, 10], ["spaeher", 33, 4]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Die Schatten geben nicht auf", "log": "Noch mehr Schatten folgen euch!", "text": "Hinter euch kräuselt sich wieder Rauch zwischen den Stämmen. Die Schatten geben nicht auf."}],
+  "triggers": [{"id": "bauer", "near": [23, 11], "d": 1, "spawnRear": "spaeher", "danger": true, "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Ein Schrei!", "log": "Ein Schatten greift von hinten an!", "text": "Da! Hinter euch schreit jemand auf. Ein <b>Schattenspäher</b> ist aus dem Dunkel gesprungen und greift von hinten an!<br><br><small>Schnell, helft ihm! Schatten lösen sich in Rauch auf, wenn man sie besiegt.</small>"}, {"id": "verfolger", "after": "bauer", "turn": 2, "spawn": [["spaeher", 39, 9], ["spaeher", 39, 11]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Sie folgen euch", "log": "Weitere Schattenspäher folgen eurer Spur!", "text": "Weit hinter euch, am Waldrand, lösen sich zwei weitere Schatten aus der Nacht. Sie haben eure Spur."}, {"id": "hinterhalt", "near": [20, 10], "d": 1, "spawn": [["holz", 18, 7], ["holz", 18, 13]], "shout": "Krrr!", "img": "holz", "imgSide": 1, "look": [18, 10], "place": "Im Traumwald", "title": "Holzkrieger!", "log": "Links und rechts brechen Holzkrieger aus dem Wald!", "text": "Plötzlich bricht es vor euch links und rechts aus dem Unterholz: <b>Holzkrieger</b>! Sie haben auf euch gewartet.<br><br><small>Holz brennt! Brandpfeile von Honoo und den Bogenschützen helfen.</small>"}, {"id": "felsen", "near": [12, 10], "d": 3, "awaken": true, "danger": true, "shout": "Knirsch …", "img": "stein", "imgSide": 1, "look": [12, 10], "place": "Bei den drei Felsen", "title": "Die Felsen erwachen!", "log": "Die drei Felsen verwandeln sich in Steinkrieger!", "text": "Am Weg liegen drei große, moosige Felsen. Als ihr vorbeigeht, knirscht es. Die Felsen richten sich auf, Arme wachsen aus dem Stein: <b>Steinkrieger</b>!<br><br><small>Pfeile prallen an Stein ab. Werft die Netze!</small>"}, {"id": "nachschub", "after": "verfolger", "turn": 4, "spawn": [["spaeher", 39, 10], ["spaeher", 33, 4]], "shout": "…", "img": "spaeher", "imgSide": 1, "place": "Im Traumwald", "title": "Die Schatten geben nicht auf", "log": "Noch mehr Schatten folgen euch!", "text": "Hinter euch kräuselt sich wieder Rauch zwischen den Stämmen. Die Schatten geben nicht auf."}, {"id": "drache", "near": [16, 10], "d": 6, "neutral": [["flussdrache", 16, 0]], "log": "Im Bach schwimmt etwas Großes nach Süden …"}],
   "outro": "Im Baumhaus ist es eng, warm und hell. Der Tanuki schenkt Tee aus, der nach Kirschblüten schmeckt, und draußen bleiben die Schatten am Rand des Lichts stehen. Sie kommen nicht näher.<br><br>Zum ersten Mal seit der Nacht der Laternen schläft {HERO} ein. Im Traum hört sie das Meer.",
   "reward": [],
-  "river": [[16, 0], [16, 1], [16, 2], [17, 3], [17, 4], [17, 5], [17, 6], [16, 7], [16, 8], [16, 9], [16, 10], [16, 11], [16, 12], [16, 13], [15, 14], [15, 15], [15, 16], [15, 17], [16, 18], [16, 19]],
+  "river": [[16, 0], [16, 1], [16, 2], [17, 2], [17, 3], [17, 4], [17, 5], [17, 6], [16, 7], [16, 8], [16, 9], [16, 10], [16, 11], [16, 12], [16, 13], [15, 13], [15, 14], [15, 15], [15, 16], [15, 17], [16, 18], [16, 19]],
   "captures": [{"id": "huegel", "c": 28, "r": 5, "name": "Hügel", "img": "jade", "imgSide": 1, "look": [39, 10], "place": "Auf dem Hügel", "title": "Ein Blick zurück", "text": "Honoo rennt auf den Hügel und schaut zurück. Im Licht des Dorfes bewegen sich Gestalten zwischen den Häusern: Holzkrieger, viele Holzkrieger. Und dazwischen ein grüner Schimmer, kalt wie Eis. Ein <b>Jadekrieger</b>.<br><br>„Weiter!“, ruft Honoo. „Zum Wald, schnell!“"}, {"id": "waldrand", "c": 26, "r": 10, "name": "Waldrand", "place": "Am Waldrand", "title": "Der Traumwald", "text": "Am Waldrand werden sie langsamer. Der Wald ist anders als jeder Wald, den sie kennen. Nebel hängt zwischen den Stämmen, blaue Lichter tanzen in der Ferne, und die Bäume flüstern. Sie schleichen den Weg entlang, der sich mal nach links, mal nach rechts biegt.<br><br>Und sie spüren es alle: Etwas folgt ihnen."}, {"id": "furt", "c": 16, "r": 10, "name": "Bachfurt", "img": "flussdrache", "imgSide": 0, "place": "Am Bach", "title": "Der Wasserdrache", "text": "Ein Bach kreuzt den Weg, sie müssen hindurch. Das Wasser ist eiskalt. Mitten in der Furt schäumt es plötzlich auf: Ein <b>Wasserdrache</b> taucht auf, lang und silbern wie der Mond. Er schwimmt ganz nah an ihnen vorbei, schaut {HERO} mit einem goldenen Auge an … und verschwindet in der Tiefe.<br><br>Niemand sagt ein Wort. Hinter ihnen im Wald knackt es. Die Schatten folgen immer noch."}, {"id": "kreuzung", "c": 7, "r": 10, "name": "Kreuzung", "place": "An der Kreuzung", "title": "Der Wegweiser", "text": "In der dunkelsten Stunde der Nacht kommen sie an eine Kreuzung. Niemand von ihnen kennt sie. An einem alten Wegweiser hängt ein Schild, und Tamashi liest leise vor:<br><br><i>„Ist die Nacht noch so dunkel, ein Licht wird kommen und sie vertreiben!“</i><br><br>Der Pfeil zeigt nicht den breiten Weg entlang, sondern auf einen schmalen Pfad, der nach Norden in den Wald führt. {HERO} zögert nur kurz. „Wir folgen dem Wegweiser.“<br><br><small>Folgt dem schmalen Pfad nach Norden zum Licht im Wald.</small>"}, {"id": "baumhaus", "c": 4, "r": 3, "name": "Baumhaus", "deco": "baumhaus", "needs": ["kreuzung"], "win": true, "heal": 4, "allies": [["tanuki", 4, 3]], "img": "tanuki", "place": "Im Baumhaus", "title": "Das Licht im Wald", "text": "Hoch oben in einer alten Zeder brennt ein warmes Licht. Ein Baumhaus! {HERO} klettert die Leiter hinauf und wird von einem dicken <b>Tanuki</b> mit Strohhut empfangen.<br><br>„Kommt alle hinein, auch wenn es eng aussieht, ihr findet alle Platz! Die Schatten meiden mein Licht. Bleibt bei mir und rastet.“"}],
   "signs": [[7, 10]]
  },
@@ -4144,11 +4144,12 @@ async function neutralAct(u) {
   const reach = reachable(u), sk = K(u.c, u.r);
   const ok = [...reach.entries()].filter(([k, n]) => k !== sk && terr(n.c, n.r) === 'w' && !unitAt(n.c, n.r));
   let best = null;
-  for (let tries = 0; tries < 2 && !best; tries++) {
-    for (const [k, n] of ok) { const g = (n.r - u.r) * (u.dir || 1); if (g > 0 && (!best || g > best.g)) best = { k, g }; }
-    if (!best) u.dir = -(u.dir || 1);
-  }
+  for (const [k, n] of ok) { const g = n.r - u.r; if (g > 0 && (!best || g > best.g)) best = { k, g }; }
   if (best) await moveUnit(u, reach, best.k);
+  else if (u.r >= Math.max(...[...HEX.values()].map(h => h.r))) { // am Südrand angekommen: er schwimmt davon
+    fxText(u, 'Platsch!', '#9ad8ff'); log(`${uname(u)} schwimmt nach Süden davon.`, 's'); await sleep(500);
+    S.units.splice(S.units.indexOf(u), 1); updateUI(); return;
+  }
   u.moved = u.acted = true;
 }
 async function moveUnit(u, reach, k) {
