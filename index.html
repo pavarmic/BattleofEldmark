@@ -7968,6 +7968,20 @@ function drawTownWall(g, W) {
   const pts = [];
   for (let c = W.c0; c <= W.c1; c++) { const a = center(c, W.row), b = center(c, W.row + 1); pts.push({ c, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 4 }); }
   const Hh = 15;
+  // gemalte Mauerteile (Michis Bild): Mauerstück wird geschert, damit es waagrecht liegt
+  const MI = OBJ_IMG.mauer, TI = OBJ_IMG.turm, GI = OBJ_IMG.tor, ok = im => im && im.complete && im.naturalWidth;
+  if (ok(MI) && ok(TI) && ok(GI)) {
+    const L = Math.abs(pts[1].x - pts[0].x);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1]; if ((W.gates || []).includes(p.c)) continue;
+      const sx = L * 1.18 / MI.naturalWidth, sy = sx * 0.7, mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+      shadowEll(g, mx, my + 2, L * 0.6, 5, 0.25);
+      g.save(); g.translate(mx, my + 4); g.transform(1, 0.51 * sy / sx, 0, 1, 0, 0); g.drawImage(MI, -MI.naturalWidth / 2 * sx, -239 * sy, MI.naturalWidth * sx, MI.naturalHeight * sy); g.restore();
+    }
+    for (const gc of W.gates || []) { const i = pts.findIndex(o => o.c === gc); if (i >= 0 && pts[i + 1]) { const x = (pts[i].x + pts[i + 1].x) / 2, y = (pts[i].y + pts[i + 1].y) / 2, w = L * 1.35, h = w * GI.naturalHeight / GI.naturalWidth; shadowEll(g, x, y + 3, w * 0.45, 6, 0.3); g.drawImage(GI, x - w / 2, y + 8 - h * 0.9, w, h); } }
+    for (const p of [pts[0], pts[pts.length - 1]]) { const w = L * 0.95, h = w * TI.naturalHeight / TI.naturalWidth; shadowEll(g, p.x, p.y + 3, w * 0.45, 6, 0.3); g.drawImage(TI, p.x - w / 2, p.y + 10 - h, w, h); }
+    return;
+  }
   for (let i = 0; i < pts.length - 1; i++) {
     const p = pts[i], q = pts[i + 1];
     if ((W.gates || []).includes(p.c)) continue;
@@ -8048,7 +8062,10 @@ const OBJ_SRC = {
   anleger: 'img/sonne/anleger.webp',
   werft: 'img/sonne/werft.webp',
   netze: 'img/sonne/netze.webp',
-  wal: 'img/sonne/wal.webp'
+  wal: 'img/sonne/wal.webp',
+  mauer: 'img/sonne/mauer.webp',
+  turm: 'img/sonne/turm.webp',
+  tor: 'img/sonne/tor.webp'
 };
 const OBJ_IMG = {}; for (const k in OBJ_SRC) { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer) scheduleRebuild(); }; lazySrc(im, OBJ_SRC[k]); OBJ_IMG[k] = im; }
 function objImg(g, k, x, y, w) { const im = OBJ_IMG[k]; if (STYLE !== 'sonne' || !im || !im.complete || !im.naturalWidth) return false; const h = w * im.naturalHeight / im.naturalWidth; g.drawImage(im, x - w / 2, y - h, w, h); return true; }
