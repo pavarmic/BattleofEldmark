@@ -3289,7 +3289,7 @@ const heroText = s => s.split('{HERO}').join(HERO_NAME);
 var BGM = (function () {
   const KEY = 'rote-sonne-musik';
   let on = true; try { on = localStorage.getItem(KEY) !== 'aus'; } catch (e) {}
-  let ctx = null, master, musicBus, natBus, running = false, mode = 'tal', timers = [], drone = null, deg = 5, phraseNo = 0, noiseBuf = null;
+  let ctx = null, master, musicBus, natBus, running = false, mode = 'tal', timers = [], drone = null, wet = null, sea = null, deg = 5, phraseNo = 0, noiseBuf = null;
   const kotoCache = {}, BASE = 146.83, SCALE = [0, 2, 5, 7, 9];
   const freq = d => { const o = Math.floor(d / 5), i = ((d % 5) + 5) % 5; return BASE * Math.pow(2, o + SCALE[i] / 12); };
   const later = (fn, s) => timers.push(setTimeout(fn, s * 1000));
@@ -3299,7 +3299,7 @@ var BGM = (function () {
     master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
     const sr = ctx.sampleRate, len = Math.floor(sr * 3.2), b = ctx.createBuffer(2, len, sr);
     for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
-    const rv = ctx.createConvolver(); rv.buffer = b; const wet = ctx.createGain(); wet.gain.value = 0.45; wet.connect(rv); rv.connect(master);
+    const rv = ctx.createConvolver(); rv.buffer = b; wet = ctx.createGain(); wet.gain.value = 0.45; wet.connect(rv); rv.connect(master);
     musicBus = ctx.createGain(); musicBus.connect(master); musicBus.connect(wet);
     natBus = ctx.createGain(); natBus.gain.value = 0.5; natBus.connect(master); const nw = ctx.createGain(); nw.gain.value = 0.25; natBus.connect(nw); nw.connect(wet);
   }
@@ -3316,7 +3316,7 @@ var BGM = (function () {
   }
   function koto(t, f, vel, pan) {
     const s = ctx.createBufferSource(); s.buffer = kotoBuf(f);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = mode === 'nacht' ? 1300 : 1800; lp.Q.value = 0.3;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = mode === 'nebel' ? 1100 : mode === 'nacht' ? 1300 : 1800; lp.Q.value = 0.3;
     const g = ctx.createGain(); g.gain.value = vel * 0.55; s.connect(lp); lp.connect(g); panTo(g, pan, musicBus); s.start(t); s.stop(t + 4);
   }
   function noise() {
@@ -3343,17 +3343,17 @@ var BGM = (function () {
   function stopDrone() { if (!drone) return; const d = drone; drone = null; d.g.gain.cancelScheduledValues(ctx.currentTime); d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => d.os.forEach(o => o.stop()), 2000); }
   function phrase() {
     if (!running) return;
-    const slow = mode === 'nacht' ? 1.7 : 1, soft = mode === 'nacht' ? 0.75 : 1, top = mode === 'nacht' ? 10 : 12;
+    const slow = mode === 'nebel' ? 2.1 : mode === 'nacht' ? 1.7 : 1, soft = mode === 'nebel' ? 0.6 : mode === 'nacht' ? 0.75 : 1, top = mode === 'tal' ? 12 : 10;
     let t = ctx.currentTime + 0.1;
     if (phraseNo % 2 === 0) koto(t, freq(Math.random() < 0.6 ? 0 : 3), 0.55, -0.3);
-    const n = 3 + Math.floor(Math.random() * 4);
+    const n = mode === 'nebel' ? 2 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 4);
     for (let i = 0; i < n; i++) {
       deg = Math.max(3, Math.min(top, deg + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
       koto(t, freq(deg), (0.4 + Math.random() * 0.2) * soft, 0.2);
       if (Math.random() < 0.2) koto(t + 0.06, freq(deg - 5), 0.25, 0.1);
       t += (0.35 + Math.random() * 0.55) * slow;
     }
-    if (phraseNo % 3 === 1) {
+    if (mode === 'nebel' ? phraseNo % 2 === 1 : phraseNo % 3 === 1) {
       let ft = t + 0.5, fd = deg + [-1, 0, 1][Math.floor(Math.random() * 3)];
       for (let i = 0, m = 1 + Math.floor(Math.random() * 2); i < m; i++) { const dur = (2 + Math.random() * 1.8) * slow; flute(ft, freq(Math.max(5, Math.min(12, fd))), dur); ft += dur + 0.2; fd += Math.random() < 0.5 ? -1 : -2; }
       t = ft;
@@ -3390,8 +3390,31 @@ var BGM = (function () {
     o.connect(lp); lp.connect(g); panTo(g, pan, natBus); o.start(t); o.stop(t + d + 0.05);
   }
   function owl(t) { const pan = Math.random() * 1.2 - 0.6; hoot(t, 470, 440, 0.9, 0.16, pan); hoot(t + 2.2, 430, 420, 0.18, 0.11, pan); hoot(t + 2.55, 460, 440, 1.3, 0.16, pan, true); }
+  // Nebel an der Küste (Missionen mit seaMist): Wellen, Windspiel, ferne Möwen, ferne Tempelglocke
+  function wave(t) {
+    const d = 7 + Math.random() * 4, up = 2.5 + Math.random() * 1.5, v = 0.35 + Math.random() * 0.2, n = noise(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.4;
+    lp.frequency.setValueAtTime(250, t); lp.frequency.linearRampToValueAtTime(900 + Math.random() * 500, t + up); lp.frequency.linearRampToValueAtTime(220, t + d);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + up); g.gain.linearRampToValueAtTime(v * 0.5, t + up + 1); g.gain.linearRampToValueAtTime(0, t + d);
+    n.connect(lp); lp.connect(g); panTo(g, Math.random() * 1.2 - 0.6, natBus); n.start(t, Math.random() * 1.5); n.stop(t + d + 0.1);
+  }
+  function startSea() {
+    if (sea) return; const n = noise(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+    const g = ctx.createGain(); g.gain.value = 0; g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 3); n.connect(lp); lp.connect(g); g.connect(natBus); n.start(); sea = { n, g };
+  }
+  function stopSea() { if (!sea) return; const s = sea; sea = null; s.g.gain.cancelScheduledValues(ctx.currentTime); s.g.gain.setTargetAtTime(0, ctx.currentTime, 0.5); setTimeout(() => s.n.stop(), 2500); }
+  function seaMode() { if (!ctx) return; wet.gain.setTargetAtTime(mode === 'nebel' ? 0.75 : 0.45, ctx.currentTime, 0.5); if (mode === 'nebel' && running) startSea(); else stopSea(); }
+  function gull(t) { const pan = Math.random() * 1.6 - 0.8; for (let i = 0, n = 2 + Math.floor(Math.random() * 3); i < n; i++) { chirp(t, 1500, 1900, 0.12, 0.025, pan); chirp(t + 0.1, 1900, 1250, 0.35, 0.025, pan); t += 0.55 + Math.random() * 0.2; } }
+  function ring(t, f, parts, pan) {
+    parts.forEach(([m, v, d]) => { const o = ctx.createOscillator(); o.frequency.value = f * m; const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); panTo(g, pan, natBus); o.start(t); o.stop(t + d + 0.1); });
+  }
+  function bell(t) { ring(t, 98, [[1, 0.09, 9], [2.76, 0.03, 5], [5.4, 0.015, 3], [0.5, 0.05, 10]], Math.random() * 0.8 - 0.4); }
+  function chime(t) { // Windspiel
+    const pan = Math.random() * 0.8 - 0.4;
+    for (let i = 0, n = 2 + Math.floor(Math.random() * 5); i < n; i++) { const f = BASE * 8 * Math.pow(2, [0, 2, 5, 7, 9, 12][Math.floor(Math.random() * 6)] / 12), v = 0.012 + Math.random() * 0.012; ring(t, f, [[1, v, 3.5], [2.76, v * 0.4, 1.5], [5.4, v * 0.15, 0.7]], pan + Math.random() * 0.3 - 0.15); t += 0.12 + Math.random() * 0.35; }
+  }
   function nature() {
     if (!running) return; const t = ctx.currentTime + 0.05;
+    if (mode === 'nebel') { wave(t); if (Math.random() < 0.4) chime(t + 0.5 + Math.random() * 3); if (Math.random() < 0.12) gull(t + 1 + Math.random() * 3); if (Math.random() < 0.06) bell(t + 2); later(nature, 4 + Math.random() * 3); return; }
     if (mode === 'tal') bird(t); else { cricket(t); if (Math.random() < 0.04) owl(ctx.currentTime + 0.6); }
     later(nature, mode === 'tal' ? 2 + Math.random() * 5 : 0.8 + Math.random() * 2);
   }
@@ -3399,10 +3422,10 @@ var BGM = (function () {
     if (!ctx) init(); if (ctx.state !== 'running') ctx.resume();
     if (running) return; running = true;
     master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0.5, ctx.currentTime, 0.5);
-    startDrone(); phraseNo = 0; phrase(); nature();
+    startDrone(); phraseNo = 0; phrase(); nature(); seaMode();
   }
   function stop() {
-    if (!running) return; running = false; timers.forEach(clearTimeout); timers = []; stopDrone();
+    if (!running) return; running = false; timers.forEach(clearTimeout); timers = []; stopDrone(); stopSea();
     master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
   }
   const wanted = () => on && CUR_ID === 'sonne';
@@ -3420,8 +3443,8 @@ var BGM = (function () {
   // gesture = true, wenn der Aufruf aus einer Berührung kommt (iPhone erlaubt Ton erst dann)
   function update(gesture) {
     button();
-    const m = (S && S.mission && S.mission.dusk) ? 'nacht' : 'tal';
-    if (m !== mode) { mode = m; if (running) { timers.forEach(clearTimeout); timers = []; startDrone(); phrase(); nature(); } }
+    const M = S && S.mission, m = M && M.seaMist ? 'nebel' : M && M.dusk ? 'nacht' : 'tal';
+    if (m !== mode) { mode = m; if (running) { timers.forEach(clearTimeout); timers = []; startDrone(); phrase(); nature(); } seaMode(); }
     if (!wanted()) { if (ctx) stop(); return; }
     if (ctx || gesture) start();
   }
