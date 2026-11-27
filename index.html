@@ -4858,10 +4858,13 @@ function buildAmbient() {
     let d = 0; if (!coast && h.t !== 'w') { d = 9; for (const o of HEX.values()) if (o.t === 'S') d = Math.min(d, hexDist(h.c, h.r, o.c, o.r)); }
     if (coast || h.t === 'w' || d <= 2) FOGZONE.add(K(h.c, h.r));
     const k = hash(h.c, h.r, 520), { x, y } = center(h.c, h.r), w = 230 + hash(h.c, h.r, 521) * 170;
-    if ((coast && k > 0.45) || (h.t === 'w' && k > 0.8)) sea.push({ x, y, ph: k * 40, w, a: 1 });
+    if (coast && k > 0.45) sea.push({ x, y, ph: k * 40, w, a: 1 });
+    else if (h.t === 'w' && k > 0.3) sea.push({ x, y, ph: k * 40, w: w * (1 + k * 0.5), a: 1.25 }); // dichter Nebel über dem offenen Meer
     else if (d >= 1 && d <= 5 && k > 0.15 + d * 0.1) sea.push({ x, y: y - 6, ph: k * 40, w: w * 1.1, a: 1.35 - d * 0.2 });
   }
-  AMB = { motes: motes.slice(0, 48), clouds, mist, sea: sea.slice(0, 160) };
+  // gleichmäßig über die ganze Karte verteilen (nicht nur den Norden), höchstens 320 Schwaden
+  const seaPick = sea.length <= 320 ? sea : sea.filter((_, i) => i % Math.ceil(sea.length / 320) === 0);
+  AMB = { motes: motes.slice(0, 48), clouds, mist, sea: seaPick };
 }
 function drawAmbientUnder(now) {
   const t = now / 1000;
