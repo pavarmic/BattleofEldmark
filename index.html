@@ -3205,6 +3205,7 @@ const SONNE_MISSIONS = [
   "sub": "Der Hafen der Träume",
   "harbor": [12, 17, 22, 27],
   "townHouses": [23, 19, 8],
+  "wall": {"row": 9, "c0": 15, "c1": 39, "gates": [26]},
   "townMist": true,
   "map": [
    "wwwwwwwwwwwhhf...ffff.fff..f.fffff.f.f.f",
@@ -4518,6 +4519,7 @@ function buildTerrain0() {
   for (const [c, r] of MAP_SIGNS) { const p = center(c, r); drawSignpost(g, p.x + 13, p.y + 6); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
   if (STYLE === 'sonne') { drawSeaBoats(g); drawHarbor(g); }
+  if (STYLE === 'sonne' && CUR_M && CUR_M.wall) drawTownWall(g, CUR_M.wall);
   // gemalte rote Holzbrücken (Michis Bild) über Kanäle in der Roten Sonne
   if (STYLE === 'sonne' && !MAP_RIVER) for (const h of hexes) if (h.t === 'b') { const bp = center(h.c, h.r); objImg(g, 'bruecke', bp.x, bp.y + R * 0.62, R * 2.5); }
   for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else if (kind === 'baumhaus' || kind === 'fuchsbau') continue; else if (OBJ_SRC[kind] && objImg(g, kind, gp.x, gp.y + R * 0.8, R * (kind === 'netze' ? 2 : kind === 'wal' ? 2.3 : 3))) continue; else boote(g, gp.x, gp.y); }
@@ -7960,6 +7962,25 @@ function harborBerths([c0, r0, c1, r1]) {
     out.push({ c: h.c, r: h.r, lc, lr, k: hash(h.c, h.r, 333) > 0.65 ? 2 : hash(h.c, h.r, 334) > 0.5 ? 1 : 0, flip: hash(h.c, h.r, 335) > 0.5 });
   }
   return out;
+}
+// Stadtmauer (M.wall = {row, c0, c1, gates:[c]}): weiße Mauer mit Ziegelkappe zwischen Zeile row und row+1, Tore und Ecktürme
+function drawTownWall(g, W) {
+  const pts = [];
+  for (let c = W.c0; c <= W.c1; c++) { const a = center(c, W.row), b = center(c, W.row + 1); pts.push({ c, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 4 }); }
+  const Hh = 15;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1];
+    if ((W.gates || []).includes(p.c)) continue;
+    shadowEll(g, (p.x + q.x) / 2, (p.y + q.y) / 2 + 3, Math.abs(q.x - p.x) * 0.6, 4, 0.25);
+    shp(g, [p.x, p.y, q.x, q.y, q.x, q.y - 5, p.x, p.y - 5], '#4a4640', 0.8);
+    shp(g, [p.x, p.y - 5, q.x, q.y - 5, q.x, q.y - Hh, p.x, p.y - Hh], '#e6e0d2', 0.8);
+    shp(g, [p.x - 2, p.y - Hh + 1, q.x + 2, q.y - Hh + 1, q.x + 1, q.y - Hh - 4, p.x - 1, p.y - Hh - 4], '#3a3d44', 0.8);
+  }
+  const tower = (x, y) => { shadowEll(g, x, y + 3, 16, 5, 0.3); shp(g, [x - 11, y, x + 11, y, x + 11, y - 26, x - 11, y - 26], '#ece6d8', 1); shp(g, [x - 11, y, x + 11, y, x + 11, y - 7, x - 11, y - 7], '#4a4640', 0.8); shp(g, [x - 17, y - 24, x + 17, y - 24, x + 9, y - 36, x - 9, y - 36], '#3a3d44', 1); g.fillStyle = '#2a2520'; g.fillRect(x - 3, y - 20, 6, 5); };
+  const gw = Math.abs(pts[1].x - pts[0].x) / 2;
+  const gate = (x, y) => { shadowEll(g, x, y + 3, gw + 4, 6, 0.3); shp(g, [x - gw, y, x - gw + 8, y, x - gw + 8, y - Hh - 4, x - gw, y - Hh - 4], '#e6e0d2', 0.8); shp(g, [x + gw - 8, y, x + gw, y, x + gw, y - Hh - 4, x + gw - 8, y - Hh - 4], '#e6e0d2', 0.8); for (const dx of [-14, 14]) shp(g, [x + dx - 3, y, x + dx + 3, y, x + dx + 3, y - 24, x + dx - 3, y - 24], '#6a2a20', 0.8); shp(g, [x - 24, y - 22, x + 24, y - 22, x + 16, y - 34, x - 16, y - 34], '#3a3d44', 1); ln(g, x - 18, y - 20, x + 18, y - 20, '#7a3020', 2.5); };
+  for (const gc of W.gates || []) { const i = pts.findIndex(o => o.c === gc); if (i >= 0 && pts[i + 1]) gate((pts[i].x + pts[i + 1].x) / 2, (pts[i].y + pts[i + 1].y) / 2); }
+  tower(pts[0].x, pts[0].y); tower(pts[pts.length - 1].x, pts[pts.length - 1].y);
 }
 function drawHarbor(g) {
   for (const b of HARBOR) {
