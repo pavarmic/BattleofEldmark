@@ -3241,7 +3241,7 @@ const SONNE_MISSIONS = [
   "slots": [[3, 1], [4, 1], [5, 1], [3, 2], [4, 2], [5, 2], [6, 2], [3, 3], [4, 3], [5, 3], [6, 3], [4, 0]],
   "joinUnits": ["tamashi_k"],
   "join": [[6, 1]],
-  "decos": [["leuchtturm", 11, 25], ["boote", 21, 24]],
+  "decos": [["leuchtturm", 11, 25], ["werft", 21, 24]],
   "enemy": [["stein", 10, 21, "guard"], ["stein", 10, 24, "guard"], ["spaeher", 26, 15, "wait"], ["spaeher", 31, 20, "wait"]],
   "secrets": [{"c": 23, "r": 13, "name": "Verlassener Speicher", "kind": "hoehle"}, {"c": 29, "r": 26, "name": "Kleiner Hafenschrein", "kind": "schrein"}, {"c": 37, "r": 15, "name": "Dunkle Hintergasse", "kind": "hoehle"}],
   "secretDeck": [{"kind": "ally", "unit": "netzbauer", "text": "Hinter einem Stapel Kisten kauert ein junger Hafenarbeiter mit einem Fischernetz. „Ihr seid die aus Kirisato, oder? Die Leute erzählen von euch.“ Er strafft die Schultern. „Ich komme mit.“"}, {"kind": "monster", "unit": "kappa", "text": "Unter dem Steg platscht es. Ein <b>Kappa</b> zieht sich aus dem schwarzen Wasser, die Wasserschale auf dem Kopf glänzt im Mondlicht. Er grinst böse."}, {"kind": "leer", "text": "Nur leere Fässer, nasse Netze und der Geruch von Salz. Hier ist niemand."}],
@@ -7949,6 +7949,7 @@ function harborBerths([c0, r0, c1, r1]) {
     const land = neighbors(h.c, h.r).filter(([c, r]) => { const n = HEX.get(K(c, r)); return n && 'dv.'.includes(n.t); });
     if (!land.length || hash(h.c, h.r, 331) > 0.55) continue;
     if (out.some(o => hexDist(o.c, o.r, h.c, h.r) < 2)) continue;
+    if ((CUR_M.decos || []).some(([, c, r]) => hexDist(c, r, h.c, h.r) <= 1)) continue; // Platz für Werft & Co.
     const [lc, lr] = land[Math.floor(hash(h.c, h.r, 332) * land.length)];
     out.push({ c: h.c, r: h.r, lc, lr, k: hash(h.c, h.r, 333) > 0.65 ? 2 : hash(h.c, h.r, 334) > 0.5 ? 1 : 0, flip: hash(h.c, h.r, 335) > 0.5 });
   }
@@ -8017,7 +8018,8 @@ const OBJ_SRC = {
   fischmarkt: 'img/sonne/fischmarkt.webp',
   teehaus: 'img/sonne/teehaus.webp',
   werkstatt: 'img/sonne/werkstatt.webp',
-  anleger: 'img/sonne/anleger.webp'
+  anleger: 'img/sonne/anleger.webp',
+  werft: 'img/sonne/werft.webp'
 };
 const OBJ_IMG = {}; for (const k in OBJ_SRC) { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer) scheduleRebuild(); }; lazySrc(im, OBJ_SRC[k]); OBJ_IMG[k] = im; }
 function objImg(g, k, x, y, w) { const im = OBJ_IMG[k]; if (STYLE !== 'sonne' || !im || !im.complete || !im.naturalWidth) return false; const h = w * im.naturalHeight / im.naturalWidth; g.drawImage(im, x - w / 2, y - h, w, h); return true; }
