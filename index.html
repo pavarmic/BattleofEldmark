@@ -3241,7 +3241,7 @@ const SONNE_MISSIONS = [
   "slots": [[3, 1], [4, 1], [5, 1], [3, 2], [4, 2], [5, 2], [6, 2], [3, 3], [4, 3], [5, 3], [6, 3], [4, 0]],
   "joinUnits": ["tamashi_k"],
   "join": [[6, 1]],
-  "decos": [["leuchtturm", 11, 25], ["werft", 21, 24]],
+  "decos": [["leuchtturm", 11, 25], ["werft", 21, 24], ["netze", 21, 21], ["netze", 12, 24], ["netze", 19, 27]],
   "enemy": [["stein", 10, 21, "guard"], ["stein", 10, 24, "guard"], ["spaeher", 26, 15, "wait"], ["spaeher", 31, 20, "wait"]],
   "secrets": [{"c": 23, "r": 13, "name": "Verlassener Speicher", "kind": "hoehle"}, {"c": 29, "r": 26, "name": "Kleiner Hafenschrein", "kind": "schrein"}, {"c": 37, "r": 15, "name": "Dunkle Hintergasse", "kind": "hoehle"}],
   "secretDeck": [{"kind": "ally", "unit": "netzbauer", "text": "Hinter einem Stapel Kisten kauert ein junger Hafenarbeiter mit einem Fischernetz. „Ihr seid die aus Kirisato, oder? Die Leute erzählen von euch.“ Er strafft die Schultern. „Ich komme mit.“"}, {"kind": "monster", "unit": "kappa", "text": "Unter dem Steg platscht es. Ein <b>Kappa</b> zieht sich aus dem schwarzen Wasser, die Wasserschale auf dem Kopf glänzt im Mondlicht. Er grinst böse."}, {"kind": "leer", "text": "Nur leere Fässer, nasse Netze und der Geruch von Salz. Hier ist niemand."}],
@@ -4519,7 +4519,7 @@ function buildTerrain0() {
   if (STYLE === 'sonne') { drawSeaBoats(g); drawHarbor(g); }
   // gemalte rote Holzbrücken (Michis Bild) über Kanäle in der Roten Sonne
   if (STYLE === 'sonne' && !MAP_RIVER) for (const h of hexes) if (h.t === 'b') { const bp = center(h.c, h.r); objImg(g, 'bruecke', bp.x, bp.y + R * 0.62, R * 2.5); }
-  for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else if (kind === 'baumhaus' || kind === 'fuchsbau') continue; else if (OBJ_SRC[kind] && objImg(g, kind, gp.x, gp.y + R * 0.8, R * 3)) continue; else boote(g, gp.x, gp.y); }
+  for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else if (kind === 'baumhaus' || kind === 'fuchsbau') continue; else if (OBJ_SRC[kind] && objImg(g, kind, gp.x, gp.y + R * 0.8, R * (kind === 'netze' ? 2 : 3))) continue; else boote(g, gp.x, gp.y); }
   // 6) Feines Raster
   g.strokeStyle = 'rgba(20,30,10,0.16)'; g.lineWidth = 1;
   for (const h of hexes) { const { x, y } = center(h.c, h.r); hexPath(g, x, y, R - 0.5); g.stroke(); }
@@ -8019,7 +8019,8 @@ const OBJ_SRC = {
   teehaus: 'img/sonne/teehaus.webp',
   werkstatt: 'img/sonne/werkstatt.webp',
   anleger: 'img/sonne/anleger.webp',
-  werft: 'img/sonne/werft.webp'
+  werft: 'img/sonne/werft.webp',
+  netze: 'img/sonne/netze.webp'
 };
 const OBJ_IMG = {}; for (const k in OBJ_SRC) { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer) scheduleRebuild(); }; lazySrc(im, OBJ_SRC[k]); OBJ_IMG[k] = im; }
 function objImg(g, k, x, y, w) { const im = OBJ_IMG[k]; if (STYLE !== 'sonne' || !im || !im.complete || !im.naturalWidth) return false; const h = w * im.naturalHeight / im.naturalWidth; g.drawImage(im, x - w / 2, y - h, w, h); return true; }
