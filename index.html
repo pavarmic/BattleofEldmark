@@ -3204,6 +3204,7 @@ const SONNE_MISSIONS = [
   "title": "Yumenoshima",
   "sub": "Der Hafen der Träume",
   "harbor": [12, 17, 22, 27],
+  "townHouses": [23, 19, 8],
   "townMist": true,
   "map": [
    "wwwwwwwwwwwhhf...ffff.fff..f.fffff.f.f.f",
@@ -7821,8 +7822,13 @@ function bambus0(g, tx, ty, s) {
 }
 // Gemalte Bauernhäuser (Bild-KI, von Michi): 0/1 Strohdach, 2/3 Ziegeldach
 const HAUS_IMG = ['img/sonne/haus-0.webp', 'img/sonne/haus-1.webp', 'img/sonne/haus-2.webp', 'img/sonne/haus-3.webp'].map(src => { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer && HAUS_IMG.every(i => i.complete)) scheduleRebuild(); }; lazySrc(im, src); return im; });
+// Gemalte Stadthäuser für Hafenstädte (M.townHouses): Händlerhaus, Lagerhaus, enges Stadthaus, Fischerhaus
+const STADT_IMG = ['img/sonne/stadt-0.webp', 'img/sonne/stadt-1.webp', 'img/sonne/stadt-2.webp', 'img/sonne/stadt-3.webp'].map(src => { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer && CUR_M && CUR_M.townHouses) scheduleRebuild(); }; lazySrc(im, src); return im; });
 function minka(g, x, y, s, k) {
-  const hi = HAUS_IMG[(k > 0.45 ? 0 : 2) + (hash(x | 0, y | 0, 64) > 0.5 ? 1 : 0)];
+  // townHouses: [c, r, Radius] – innen Stadthäuser, am Rand gemischt mit Landhäusern, außen nur Landhäuser
+  let town = false;
+  if (CUR_M && CUR_M.townHouses) { const [tc, tr, rad] = CUR_M.townHouses, tp = center(tc, tr), d = Math.hypot(x - tp.x, y - tp.y) / (R * 1.73); town = d < rad || (d < rad + 5 && hash(x | 0, y | 0, 67) > (d - rad) / 5); }
+  const hi = town ? STADT_IMG[Math.floor(hash(x | 0, y | 0, 66) * 4)] : HAUS_IMG[(k > 0.45 ? 0 : 2) + (hash(x | 0, y | 0, 64) > 0.5 ? 1 : 0)];
   if (hi && hi.complete && hi.naturalWidth) {
     const w = 21 * s, h = w * hi.naturalHeight / hi.naturalWidth;
     shadowEll(g, x + 4, y + 1, w * 0.45, 4, 0.3);
