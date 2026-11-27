@@ -3683,6 +3683,7 @@ function missionResult(win) {
 }
 
 // ---------- Bewegung ----------
+const BOAT_MV = 4; // alle Boote sind gleich schnell
 function moveCost(u, c, r) {
   const t = terr(c, r);
   if (S && S.boats && u.side === 0 && t === 'w') return 1; // im Boot über das Wasser
@@ -3703,7 +3704,9 @@ function inZoc(u, c, r) {
 }
 function reachable(u) {
   const T = TYPES[u.type], sk = K(u.c, u.r);
-  const res = new Map([[sk, { c: u.c, r: u.r, mp: Math.max(0, T.mv - (u.netted || 0)), prev: null, steps: 0 }]]);
+  // Wer im Boot sitzt, rudert immer gleich schnell (BOAT_MV), egal welche Einheit
+  const inBoat = S && S.boats && u.side === 0 && !T.fly && terr(u.c, u.r) === 'w';
+  const res = new Map([[sk, { c: u.c, r: u.r, mp: Math.max(0, (inBoat ? BOAT_MV : T.mv) - (u.netted || 0)), prev: null, steps: 0 }]]);
   const open = [sk];
   while (open.length) {
     open.sort((a, b) => res.get(b).mp - res.get(a).mp);
