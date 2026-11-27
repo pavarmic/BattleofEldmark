@@ -8323,7 +8323,7 @@ function render(now) {
     const base = center(u.c, u.r);
     const x = (u.px ?? base.x) + (u.ox || 0), y = (u.py ?? base.y) + (u.oy || 0);
     if (!inView(x, y, 80) || !shown(u)) continue;
-    if (S.boats && u.side === 0 && terr(u.c, u.r) === 'w' && u.px === undefined) { const by = y + R * 0.5; unitBoat(ctx, x, by, now); drawUnit(u, x, y - 10 + Math.sin(now / 600) * 1.5, now); ctx.save(); ctx.beginPath(); ctx.rect(x - 60, by - 8, 120, 60); ctx.clip(); unitBoat(ctx, x, by, now, true); ctx.restore(); drawUnitBar(u, x, y - 10 + Math.sin(now / 600) * 1.5); continue; }
+    if (S.boats && u.side === 0 && !TYPES[u.type].fly && terr(u.c, u.r) === 'w' && u.px === undefined) { const by = y + R * 0.5; unitBoat(ctx, x, by, now); drawUnit(u, x, y - 10 + Math.sin(now / 600) * 1.5, now); ctx.save(); ctx.beginPath(); ctx.rect(x - 60, by - 8, 120, 60); ctx.clip(); unitBoat(ctx, x, by, now, true); ctx.restore(); drawUnitBar(u, x, y - 10 + Math.sin(now / 600) * 1.5); continue; }
     drawUnit(u, x, y, now);
   }
   // Geschoss
