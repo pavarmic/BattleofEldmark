@@ -3203,6 +3203,7 @@ const SONNE_MISSIONS = [
   "boats": true,
   "title": "Yumenoshima",
   "sub": "Der Hafen der Träume",
+  "harbor": [12, 17, 22, 27],
   "townMist": true,
   "map": [
    "wwwwwwwwwwwhhf...ffff.fff..f.fffff.f.f.f",
@@ -3449,7 +3450,7 @@ function makeSecretsFor(spots, fixed) {
 }
 let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], MAP_SEAMIST = false, FOGZONE = new Set(), LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = M.dusk || false; MAP_SEAMIST = !!M.seaMist; TOWNMIST = !!M.townMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f])).concat((M.decos || []).map(([k, c, r]) => [k, { c, r }]));
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = M.dusk || false; MAP_SEAMIST = !!M.seaMist; TOWNMIST = !!M.townMist; CUR_M = M; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f])).concat((M.decos || []).map(([k, c, r]) => [k, { c, r }]));
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false, captured: {},
@@ -4324,6 +4325,7 @@ function buildTerrain0() {
   g.fillStyle = '#1e2e1b'; g.fillRect(0, 0, W, H);
   const hexes = [...HEX.values()].sort((a, b) => a.r - b.r || a.c - b.c);
   SEA_BOATS = STYLE === 'sonne' ? seaBoats() : [];
+  HARBOR = STYLE === 'sonne' && CUR_M && CUR_M.harbor ? harborBerths(CUR_M.harbor) : [];
   WATER_HEX = hexes.filter(h => (h.t === 'w' || h.t === 'u' || h.t === 'i') && !SEA_BOATS.some(b => b.c === h.c && b.r === h.r)).map(h => ({ ...center(h.c, h.r), k: hash(h.c, h.r, 77) }));
   const E = R * SQ3 / 2;
   // 1) Grundfarben mit sanftem Rauschen
@@ -4514,7 +4516,7 @@ function buildTerrain0() {
   for (const [c, r, k] of MAP_CARTS) { const p = center(c, r); drawLogLoad(g, p.x, p.y, k, hash(c, r, 3)); }
   for (const [c, r] of MAP_SIGNS) { const p = center(c, r); drawSignpost(g, p.x + 13, p.y + 6); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
-  if (STYLE === 'sonne') drawSeaBoats(g);
+  if (STYLE === 'sonne') { drawSeaBoats(g); drawHarbor(g); }
   // gemalte rote Holzbrücken (Michis Bild) über Kanäle in der Roten Sonne
   if (STYLE === 'sonne' && !MAP_RIVER) for (const h of hexes) if (h.t === 'b') { const bp = center(h.c, h.r); objImg(g, 'bruecke', bp.x, bp.y + R * 0.62, R * 2.5); }
   for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else if (kind === 'baumhaus' || kind === 'fuchsbau') continue; else boote(g, gp.x, gp.y); }
@@ -7938,6 +7940,35 @@ function drawSeaBoats(g) {
   for (const b of SEA_BOATS) { const p = center(b.c, b.r); shadowEll(g, p.x, p.y + 6, 18, 4, 0.18); bootImg(g, b.k, p.x, p.y + 8, b.k === 2 ? 46 : 60, b.flip); }
 }
 let SEA_BOATS = [];
+// Hafenbecken (M.harbor = [c0, r0, c1, r1]): Holzstege an der Kaimauer, daran vertäute Boote
+let HARBOR = [], CUR_M = null;
+function harborBerths([c0, r0, c1, r1]) {
+  const out = [];
+  for (const h of HEX.values()) {
+    if (h.t !== 'w' || h.c < c0 || h.c > c1 || h.r < r0 || h.r > r1) continue;
+    const land = neighbors(h.c, h.r).filter(([c, r]) => { const n = HEX.get(K(c, r)); return n && 'dv.'.includes(n.t); });
+    if (!land.length || hash(h.c, h.r, 331) > 0.55) continue;
+    if (out.some(o => hexDist(o.c, o.r, h.c, h.r) < 2)) continue;
+    const [lc, lr] = land[Math.floor(hash(h.c, h.r, 332) * land.length)];
+    out.push({ c: h.c, r: h.r, lc, lr, k: hash(h.c, h.r, 333) > 0.65 ? 2 : hash(h.c, h.r, 334) > 0.5 ? 1 : 0, flip: hash(h.c, h.r, 335) > 0.5 });
+  }
+  return out;
+}
+function drawHarbor(g) {
+  for (const b of HARBOR) {
+    const p = center(b.c, b.r), q = center(b.lc, b.lr), a = Math.atan2(p.y - q.y, p.x - q.x);
+    const sx = (p.x + q.x) / 2, sy = (p.y + q.y) / 2, len = Math.hypot(p.x - q.x, p.y - q.y) * 0.95;
+    // Steg vom Ufer ins Becken
+    g.save(); g.translate(sx, sy); g.rotate(a);
+    g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(-len * 0.1, -5, len * 0.75, 15);
+    for (let k = -len * 0.12; k < len * 0.6; k += 5) { g.fillStyle = Math.round(k / 5) % 2 ? '#8a5f34' : '#9c6e42'; g.fillRect(k, -8, 4.4, 15); g.strokeStyle = '#3e2814'; g.lineWidth = 0.7; g.strokeRect(k, -8, 4.4, 15); }
+    for (const k of [len * 0.05, len * 0.3, len * 0.55]) for (const yy of [-10, 6]) { g.fillStyle = '#4a3018'; g.fillRect(k - 1.6, yy, 3.2, 6); }
+    g.restore();
+    // Boot längsseits
+    const ox = Math.cos(a + Math.PI / 2) * 20, oy = Math.sin(a + Math.PI / 2) * 10;
+    shadowEll(g, p.x + ox, p.y + oy + 6, 18, 4, 0.2); bootImg(g, b.k, p.x + ox, p.y + oy + 8, b.k === 2 ? 50 : 46, b.flip);
+  }
+}
 // Ein Ruderboot unter einer Einheit auf dem Wasser
 function unitBoat(g, x, y, now, front) {
   const b = Math.sin(now / 600) * 1.5;
