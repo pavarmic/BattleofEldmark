@@ -3203,6 +3203,7 @@ const SONNE_MISSIONS = [
   "boats": true,
   "title": "Yumenoshima",
   "sub": "Der Hafen der Träume",
+  "townMist": true,
   "map": [
    "wwwwwwwwwwwhhf...ffff.fff..f.fffff.f.f.f",
    "wwwwwwwwwwwhh...ffffff..ffff.ffff...ffff",
@@ -3218,10 +3219,10 @@ const SONNE_MISSIONS = [
    "wwwwwwwwwwddwwddv.vvv.vv.v..vvd..vvv.v..",
    "wwwwwwwwwwwfddwwd.vv..v...vv.dddvvvv.vvv",
    "wwwwwwwwwwwffddwddvv.vv.v.vddv.ddvv.v...",
-   "wwwwwwwwwwwwfvvdwdddvv...v.d...vvd..v...",
+   "wwwwwwwwwwwwfvvdbdddvv...v.d...vvd..v...",
    "wwwwwwwwwwwwf.dwd.vddv...ddv..vv.d..vv.v",
    "wwwwwwwwwwwwf.vdwd...ddv.d..vv....dv..v.",
-   "wwwwwwwwwwwwf.ddwdddv.dvd......v.vdd..v.",
+   "wwwwwwwwwwwwf.ddbdddv.dvd......v.vdd..v.",
    "wwwwwwwwwwwffvdwwwwwdvdddvv....vv.v.d...",
    "wwwwwwwwwwwffdwwwwwwd.dv....v.v.vvv.d.v.",
    "wwwwwwwwwwfffdwwwwwwwddv.v.vvvv.....d...",
@@ -3448,7 +3449,7 @@ function makeSecretsFor(spots, fixed) {
 }
 let STYLE = 'eldmark', MAP_RIVER = null, MAP_DUSK = false, MAP_BLOOM = 0.86, MAP_GOALDECO = [], MAP_SEAMIST = false, FOGZONE = new Set(), LANTERNS = [];
 function setupBattle(M, roster) {
-  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = M.dusk || false; MAP_SEAMIST = !!M.seaMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f])).concat((M.decos || []).map(([k, c, r]) => [k, { c, r }]));
+  STYLE = M.style || 'eldmark'; MAP_RIVER = M.river || null; MAP_DUSK = M.dusk || false; MAP_SEAMIST = !!M.seaMist; TOWNMIST = !!M.townMist; MAP_BLOOM = M.bloom || 0.86; MAP_GOALDECO = (M.goalDeco && M.goal ? [[M.goalDeco, M.goal]] : []).concat((M.captures || []).filter(f => f.deco).map(f => [f.deco, f])).concat((M.decos || []).map(([k, c, r]) => [k, { c, r }]));
   MAP_SECRETS = M.secrets || []; MAP_MIST = !!M.mist; MAP_BROOK = M.brook || null; MAP_HILL = M.hill || null; MAP_TRAIL = M.trails || (M.trail ? [M.trail] : null); MAP_CARTS = M.carts || []; MAP_SIGNS = M.signs || []; MAP_BRANCHES = M.branches || []; MAP_CRITTERS = M.critters || []; GATE_OPEN = !M.gate && !M.gateShut; loadMap(M.map);
   S = { units: [], turn: 1, phase: 'player', sel: null, reach: null, targets: new Map(), mission: M,
         busy: false, hover: null, fx: [], proj: null, nextId: 1, aiActive: null, goalReached: false, captured: {},
@@ -4514,6 +4515,8 @@ function buildTerrain0() {
   for (const [c, r] of MAP_SIGNS) { const p = center(c, r); drawSignpost(g, p.x + 13, p.y + 6); }
   for (const h of hexes) { const { x, y } = center(h.c, h.r); fairyDetails(g, h, x, y); }
   if (STYLE === 'sonne') drawSeaBoats(g);
+  // gemalte rote Holzbrücken (Michis Bild) über Kanäle in der Roten Sonne
+  if (STYLE === 'sonne' && !MAP_RIVER) for (const h of hexes) if (h.t === 'b') { const bp = center(h.c, h.r); objImg(g, 'bruecke', bp.x, bp.y + R * 0.62, R * 2.5); }
   for (const [kind, G] of MAP_GOALDECO) { const gp = center(G.c, G.r); if (kind === 'torii') torii(g, gp.x, gp.y + 4, false); else if (kind === 'leuchtturm') leuchtturm(g, gp.x, gp.y); else if (kind === 'huette') fischerhuette(g, gp.x, gp.y); else if (kind === 'baumhaus' || kind === 'fuchsbau') continue; else boote(g, gp.x, gp.y); }
   // 6) Feines Raster
   g.strokeStyle = 'rgba(20,30,10,0.16)'; g.lineWidth = 1;
@@ -4841,7 +4844,7 @@ const SPR = {
 const GRAIN = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const d = g.createImageData(128, 128);
   for (let i = 0; i < d.data.length; i += 4) { const v = 100 + Math.random() * 155; d.data[i] = v; d.data[i + 1] = v * 0.95; d.data[i + 2] = v * 0.85; d.data[i + 3] = 255; }
   g.putImageData(d, 0, 0); return c; })();
-let AMB = { motes: [], clouds: [], mist: [], sea: [] };
+let AMB = { motes: [], clouds: [], mist: [], sea: [] }, TOWNMIST = false;
 function buildAmbient() {
   buildFangronFx();
   const motes = [], mist = [];
@@ -4863,10 +4866,11 @@ function buildAmbient() {
     const k = hash(h.c, h.r, 520), { x, y } = center(h.c, h.r), w = 230 + hash(h.c, h.r, 521) * 170;
     if (coast && k > 0.45) sea.push({ x, y, ph: k * 40, w, a: 1 });
     else if (h.t === 'w' && k > 0.3) sea.push({ x, y, ph: k * 40, w: w * (1 + k * 0.5), a: 1.25 }); // dichter Nebel über dem offenen Meer
+    else if (TOWNMIST && h.t !== 'w' && k > 0.5) sea.push({ x, y: y - 4, ph: k * 40, w: w * 0.95, a: 0.8 }); // Nebel zieht durch die Gassen der Hafenstadt
     else if (d >= 1 && d <= 5 && k > 0.15 + d * 0.1) sea.push({ x, y: y - 6, ph: k * 40, w: w * 1.1, a: 1.35 - d * 0.2 });
   }
   // gleichmäßig über die ganze Karte verteilen (nicht nur den Norden), höchstens 320 Schwaden
-  const seaPick = sea.length <= 320 ? sea : sea.filter((_, i) => i % Math.ceil(sea.length / 320) === 0);
+  const seaPick = sea.length <= 420 ? sea : sea.filter((_, i) => i % Math.ceil(sea.length / 420) === 0);
   AMB = { motes: motes.slice(0, 48), clouds, mist, sea: seaPick };
 }
 function drawAmbientUnder(now) {
@@ -5626,7 +5630,7 @@ function drawDeco(g, h, x, y) {
       g.strokeStyle = '#6a665c'; g.lineWidth = 0.8; g.stroke();
       g.strokeStyle = 'rgba(230,245,255,0.6)'; g.beginPath(); g.arc(sx, sy, rr + 1.5, Math.PI * 0.15, Math.PI * 0.85); g.stroke();
     }
-  } else if (h.t === 'b') {
+  } else if (h.t === 'b' && !(STYLE === 'sonne' && OBJ_IMG.bruecke && OBJ_IMG.bruecke.naturalWidth)) {
     g.strokeStyle = 'rgba(200,230,255,0.45)'; g.lineWidth = 1.5;
     for (const wy of [y - 14, y + 14]) { g.beginPath(); for (let dx = -R; dx <= R; dx += 4) g.lineTo(x + dx, wy + Math.sin(dx / 5) * 2); g.stroke(); }
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x - R, y - 8, R * 2, 19);
@@ -7970,7 +7974,8 @@ const OBJ_SRC = {
   tier_reh: 'img/sonne/tier_reh.webp',
   tier_hase: 'img/sonne/tier_hase.webp',
   tier_fuchs: 'img/sonne/tier_fuchs.webp',
-  tier_fasan: 'img/sonne/tier_fasan.webp'
+  tier_fasan: 'img/sonne/tier_fasan.webp',
+  bruecke: 'img/sonne/bruecke.webp'
 };
 const OBJ_IMG = {}; for (const k in OBJ_SRC) { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer) scheduleRebuild(); }; lazySrc(im, OBJ_SRC[k]); OBJ_IMG[k] = im; }
 function objImg(g, k, x, y, w) { const im = OBJ_IMG[k]; if (STYLE !== 'sonne' || !im || !im.complete || !im.naturalWidth) return false; const h = w * im.naturalHeight / im.naturalWidth; g.drawImage(im, x - w / 2, y - h, w, h); return true; }
