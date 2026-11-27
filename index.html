@@ -3488,6 +3488,7 @@ function setupBattle(M, roster) {
   BGM.update();
 }
 function beginBattle() {
+  S.live = true; // echte Schlacht (nicht nur das Kartenbild hinter dem Menü)
   log(`${S.mission.title}: ${S.mission.goalText}`, 's');
   log('— Runde 1 —', 's');
   showBanner('Du bist am Zug!', 'Runde 1');
@@ -3589,6 +3590,22 @@ function showCampaigns() {
     [{ label: 'Lehrstunde (Tutorial)', fn: startTutorial }, { label: 'Freies Gefecht', fn: startSkirmish }, { label: 'Anleitung', fn: () => { help.classList.remove('hidden'); help.dataset.back = '1'; } }]);
   document.querySelectorAll('.camp').forEach(el => { el.onclick = () => { useCampaign(el.dataset.id); ladeBilder(null, [CUR.heroType, ...CUR.start]).then(showMenu); }; });
 }
+// Missionsziele: was ist geschafft, was ist noch offen?
+function showGoals() {
+  const M = S.mission, li = (done, txt) => `<li class="${done ? 'cur' : ''}"><span class="mk">${done ? '✔' : '○'}</span>${txt}</li>`, rows = [];
+  if (M.captures) for (const f of M.captures) {
+    const done = !!S.captured[f.id], miss = (f.needs || []).filter(id => !S.captured[id]).map(id => M.captures.find(x => x.id === id).name);
+    rows.push(li(done, `<b>${f.name}</b> ${f.win ? 'erreichen' : 'erobern'}${f.win ? ' <small>(Ziel der Mission)</small>' : ''}${!done && miss.length ? ` <small>erst nach: ${miss.join(', ')}</small>` : ''}`));
+  } else if (M.goal) rows.push(li(S.goalReached, `<b>${M.goal.name || 'Das Ziel'}</b> erreichen`));
+  else if (!M.tutorial) { const n = alive(1).length + alive(2).filter(u => !u.peace).length; rows.push(li(n === 0 && !(M.triggers || []).some(T => T.spawn && !(T.id in S.fired)), `Alle Feinde besiegen <small>(noch ${n} auf der Karte${(M.triggers || []).some(T => T.spawn && !(T.id in S.fired)) ? ', es können weitere kommen' : ''})</small>`)); }
+  const hero = S.units.find(u => u.side === 0 && TYPES[u.type].hero);
+  if (hero && !M.skirmish) rows.push(li(hero.hp > 0, `${uname(hero)} darf nicht fallen <small>(${hero.hp > 0 ? 'lebt' : 'gefallen'})</small>`));
+  for (const u of S.units.filter(u => u.side === 0 && TYPES[u.type].protect)) rows.push(li(u.hp > 0, `${TYPES[u.type].name} beschützen <small>(${u.hp > 0 ? 'in Sicherheit' : 'geholt'})</small>`));
+  const sec = S.secrets || [];
+  if (sec.length) { const ex = sec.filter(x => x.explored).length; rows.push(li(ex === sec.length, `Geheime Orte erkunden <small>(${ex} von ${sec.length}, freiwillig)</small>`)); }
+  showStory(`Mission · Runde ${S.turn}`, 'Missionsziele', `<p>${M.goalText || ''}</p><ol class="missions">${rows.join('')}</ol>`,
+    [{ label: 'Zurück zur Schlacht', main: true }, { label: 'Menü', fn: showMenu }]);
+}
 function showMenu() {
   if (S && S.busy && S.phase !== 'over') return;
   const cont = CAMP && CAMP.mission < MISSIONS.length, eld = CUR_ID === 'eldmark';
@@ -3596,9 +3613,10 @@ function showMenu() {
     const st = !CAMP ? '' : i < CAMP.mission ? '✔' : i === CAMP.mission ? '➜' : '';
     return `<li class="${CAMP && i === CAMP.mission ? 'cur' : ''}"><span class="mk">${st}</span><b>${i + 1}. ${m.title}</b> <small>${m.sub}</small></li>`;
   }).join('') + (CUR.done ? '' : `<li><span class="mk"></span><i style="opacity:.75">Weitere Missionen folgen …</i></li>`);
-  const btns = [];
-  if (cont) btns.push({ label: `Weiter: Mission ${CAMP.mission + 1}`, main: true, fn: () => startMission(CAMP.mission) });
-  btns.push({ label: CAMP ? 'Neue Kampagne' : 'Kampagne starten', main: !cont, fn: () => {
+  const btns = [], fight = S && S.live && S.mission && S.phase !== 'over';
+  if (fight) { btns.push({ label: 'Zurück zur Schlacht', main: true }); btns.push({ label: 'Missionsziele', fn: showGoals }); }
+  if (cont) btns.push({ label: fight ? `Mission ${CAMP.mission + 1} neu starten` : `Weiter: Mission ${CAMP.mission + 1}`, main: !fight, fn: () => startMission(CAMP.mission) });
+  btns.push({ label: CAMP ? 'Neue Kampagne' : 'Kampagne starten', main: !cont && !fight, fn: () => {
     if (!CAMP) { newCampaign(); startMission(0); return; }
     showStory('Neue Kampagne', 'Wirklich neu beginnen?', `<p>Dein bisheriger Fortschritt (Mission ${Math.min(CAMP.mission + 1, MISSIONS.length)} und alle Veteranen) geht dabei verloren.</p>`,
       [{ label: 'Ja, neu beginnen', main: true, fn: () => { newCampaign(); startMission(0); } }, { label: 'Abbrechen', fn: showMenu }]);
