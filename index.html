@@ -8088,7 +8088,8 @@ const OBJ_SRC = {
   wal: 'img/sonne/wal.webp',
   mauer: 'img/sonne/mauer.webp',
   turm: 'img/sonne/turm.webp',
-  tor: 'img/sonne/tor.webp'
+  tor: 'img/sonne/tor.webp',
+  hokora: 'img/sonne/hokora.webp'
 };
 const OBJ_IMG = {}; for (const k in OBJ_SRC) { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer) scheduleRebuild(); }; lazySrc(im, OBJ_SRC[k]); OBJ_IMG[k] = im; }
 function objImg(g, k, x, y, w) { const im = OBJ_IMG[k]; if (STYLE !== 'sonne' || !im || !im.complete || !im.naturalWidth) return false; const h = w * im.naturalHeight / im.naturalWidth; g.drawImage(im, x - w / 2, y - h, w, h); return true; }
@@ -8311,6 +8312,12 @@ function drawSecret(sec, now) {
     g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 0.8;
     for (const ly of [-10, -2, 4]) { g.beginPath(); g.moveTo(x - 11, y + ly); g.lineTo(x - 5, y + ly); g.moveTo(x + 5, y + ly); g.lineTo(x + 11, y + ly); g.stroke(); }
     ell(g, x - 9, y - 16, 3, 1.6, '#4a8a3a', 0);
+  } else if (sec.kind === 'hoehle' && STYLE === 'sonne' && OBJ_IMG.hokora && OBJ_IMG.hokora.complete && OBJ_IMG.hokora.naturalWidth) {
+    // gemalter Wegschrein (Michis Bild) statt der Höhle in der Roten Sonne
+    shadowEll(g, x, y + 10, 16, 4, 0.3);
+    if (sec.explored) g.globalAlpha = 0.7;
+    objImg(g, 'hokora', x, y + 12, R * 1.15);
+    g.globalAlpha = 1;
   } else {
     blob(g, [x - 18, y + 9, x - 14, y - 18, x, y - 19, x + 14, y - 18, x + 18, y + 9], grad(g, x, y - 19, x, y + 9, stone, sd), 1.1);
     blob(g, [x - 8, y + 9, x - 8, y - 9, x, y - 9, x + 8, y - 9, x + 8, y + 9], '#141010', 0.8);
