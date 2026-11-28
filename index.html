@@ -7993,32 +7993,20 @@ function drawTownWall(g, W) {
   for (let c = W.c0; c <= W.c1; c++) { const a = center(c, W.row), b = center(c, W.row + 1); pts.push({ c, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 4 }); }
   const Hh = 15;
   // gemalte Mauerteile (Michis Bild): Mauerstück wird geschert, damit es waagrecht liegt
-  const MI = OBJ_IMG.mauer, TI = OBJ_IMG.turm, GI = OBJ_IMG.tor, ok = im => im && im.complete && im.naturalWidth;
+  // gemalte Mauer und Tor von vorn (Michis Bild): Mauerstücke aneinandergereiht, Tor darüber, Ecktürme an den Enden
+  const MI = OBJ_IMG.mauer2, TI = OBJ_IMG.turm, GI = OBJ_IMG.tor2, ok = im => im && im.complete && im.naturalWidth;
   if (ok(MI) && ok(TI) && ok(GI)) {
-    const L = Math.abs(pts[1].x - pts[0].x);
+    const L = Math.abs(pts[1].x - pts[0].x), sc = L * 1.04 / MI.naturalWidth, mh = MI.naturalHeight * sc;
     for (let i = 0; i < pts.length - 1; i++) {
-      const p = pts[i], q = pts[i + 1]; if ((W.gates || []).includes(p.c)) continue;
-      const sx = L * 1.18 / MI.naturalWidth, sy = sx * 0.7, mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      shadowEll(g, mx, my + 2, L * 0.6, 5, 0.25);
-      g.save(); g.translate(mx, my + 4); g.transform(1, 0.51 * sy / sx, 0, 1, 0, 0); g.drawImage(MI, -MI.naturalWidth / 2 * sx, -239 * sy, MI.naturalWidth * sx, MI.naturalHeight * sy); g.restore();
+      const p = pts[i], q = pts[i + 1], mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2 + 6;
+      shadowEll(g, mx, my, L * 0.6, 5, 0.25);
+      g.drawImage(MI, mx - L * 0.52, my - mh, L * 1.04, mh);
     }
-    // Tor von vorn gezeichnet, passend zur geraden Mauer (Holztor mit Ziegeldach wie in Michis Bild)
     for (const gc of W.gates || []) { const i = pts.findIndex(o => o.c === gc); if (i >= 0 && pts[i + 1]) {
-      const x = (pts[i].x + pts[i + 1].x) / 2, y = (pts[i].y + pts[i + 1].y) / 2 + 4, hw = L / 2 + 2, ph = 30;
-      shadowEll(g, x, y + 3, hw + 6, 6, 0.3);
-      for (const sx of [-1, 1]) { // Mauerstummel mit Steinsockel
-        shp(g, [x + sx * hw, y, x + sx * (hw - 9), y, x + sx * (hw - 9), y - 10, x + sx * hw, y - 10], '#8a877e', 0.8);
-        shp(g, [x + sx * hw, y - 10, x + sx * (hw - 9), y - 10, x + sx * (hw - 9), y - 24, x + sx * hw, y - 24], '#e8e2d4', 0.8);
-      }
-      g.fillStyle = 'rgba(20,16,12,0.85)'; g.fillRect(x - hw + 13, y - ph + 4, 2 * hw - 26, ph - 4); // Durchgang
-      for (const sx of [-1, 1]) { shp(g, [x + sx * (hw - 9), y, x + sx * (hw - 14), y, x + sx * (hw - 14), y - ph, x + sx * (hw - 9), y - ph], '#5e4c3a', 0.9); // Pfosten
-        shp(g, [x + sx * (hw - 14), y - 2, x + sx * (hw - 26), y + 1, x + sx * (hw - 26), y - ph + 6, x + sx * (hw - 14), y - ph + 4], '#6e5a44', 0.8); } // offene Torflügel
-      shp(g, [x - hw + 9, y - ph, x + hw - 9, y - ph, x + hw - 9, y - ph - 6, x - hw + 9, y - ph - 6], '#4e3e2e', 0.9); // Querbalken
-      shp(g, [x - hw - 8, y - ph - 4, x + hw + 8, y - ph - 4, x + hw - 4, y - ph - 20, x - hw + 4, y - ph - 20], '#3c4048', 1); // Ziegeldach
-      g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1; for (let k = -hw; k < hw; k += 5) { g.beginPath(); g.moveTo(x + k, y - ph - 5); g.lineTo(x + k * 0.85, y - ph - 19); g.stroke(); }
-      shp(g, [x - hw + 2, y - ph - 20, x + hw - 2, y - ph - 20, x + hw - 2, y - ph - 23, x - hw + 2, y - ph - 23], '#2c2f36', 0.8); // First
+      const x = (pts[i].x + pts[i + 1].x) / 2, y = (pts[i].y + pts[i + 1].y) / 2 + 6, gw = GI.naturalWidth * sc * 1.15, gh = GI.naturalHeight * sc * 1.15;
+      g.drawImage(GI, x - gw / 2, y - gh, gw, gh);
     } }
-    for (const p of [pts[0], pts[pts.length - 1]]) { const w = L * 0.95, h = w * TI.naturalHeight / TI.naturalWidth; shadowEll(g, p.x, p.y + 3, w * 0.45, 6, 0.3); g.drawImage(TI, p.x - w / 2, p.y + 10 - h, w, h); }
+    for (const p of [pts[0], pts[pts.length - 1]]) { const w = L * 0.95, h = w * TI.naturalHeight / TI.naturalWidth; shadowEll(g, p.x, p.y + 6, w * 0.45, 6, 0.3); g.drawImage(TI, p.x - w / 2, p.y + 12 - h, w, h); }
     return;
   }
   for (let i = 0; i < pts.length - 1; i++) {
@@ -8105,7 +8093,9 @@ const OBJ_SRC = {
   mauer: 'img/sonne/mauer.webp',
   turm: 'img/sonne/turm.webp',
   tor: 'img/sonne/tor.webp',
-  hokora: 'img/sonne/hokora.webp'
+  hokora: 'img/sonne/hokora.webp',
+  mauer2: 'img/sonne/mauer-gerade.webp',
+  tor2: 'img/sonne/tor-gerade.webp'
 };
 const OBJ_IMG = {}; for (const k in OBJ_SRC) { const im = new Image(); im.onload = () => { if (STYLE === 'sonne' && terrainLayer) scheduleRebuild(); }; lazySrc(im, OBJ_SRC[k]); OBJ_IMG[k] = im; }
 function objImg(g, k, x, y, w) { const im = OBJ_IMG[k]; if (STYLE !== 'sonne' || !im || !im.complete || !im.naturalWidth) return false; const h = w * im.naturalHeight / im.naturalWidth; g.drawImage(im, x - w / 2, y - h, w, h); return true; }
