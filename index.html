@@ -7981,6 +7981,7 @@ function harborBerths([c0, r0, c1, r1]) {
     if (!land.length || hash(h.c, h.r, 331) > 0.55) continue;
     if (out.some(o => hexDist(o.c, o.r, h.c, h.r) < 2)) continue;
     if ((CUR_M.decos || []).some(([, c, r]) => hexDist(c, r, h.c, h.r) <= 1)) continue; // Platz für Werft & Co.
+    if (neighbors(h.c, h.r).some(([c, r]) => { const n = HEX.get(K(c, r)); return n && n.t === 'b'; })) continue; // kein Steg direkt an einer Brücke
     const [lc, lr] = land[Math.floor(hash(h.c, h.r, 332) * land.length)];
     out.push({ c: h.c, r: h.r, lc, lr, k: hash(h.c, h.r, 333) > 0.65 ? 2 : hash(h.c, h.r, 334) > 0.5 ? 1 : 0, flip: hash(h.c, h.r, 335) > 0.5 });
   }
