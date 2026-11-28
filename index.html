@@ -492,7 +492,10 @@ const TER = {
   'F': { n: 'Brennende Stämme', cost: Infinity, def: 0, col: [132, 150, 80] },
   'I': { n: 'Waldteich', cost: Infinity, def: 0, col: [60, 122, 170] },
   'S': { n: 'Strand', cost: 1, def: 0, col: [220, 206, 160] },
-  'R': { n: 'Reisfeld', cost: 2, def: 0, col: [104, 150, 128] }
+  'R': { n: 'Reisfeld', cost: 2, def: 0, col: [104, 150, 128] },
+  'M': { n: 'Wehrgang', cost: 1, def: 3, col: [128, 194, 164] },
+  'T': { n: 'Mauerturm', cost: 1, def: 4, col: [128, 194, 164] },
+  'G': { n: 'Stadttor', cost: 1, def: 2, col: [128, 194, 164] }
 };
 let FACTION = ['Wächter von Eldmark', 'Aschhorde'];
 const TYPES = {
@@ -571,7 +574,7 @@ const TYPES = {
              desc: 'Hanzaki, ein uralter Riesensalamander aus den Bergflüssen. Groß, zäh und langsam, mit einem Maul, das einen Krieger verschlingen kann.' },
   koenig:  { name: 'Der Kalte König', icon: '❄️', hp: 60, atk: 12, def: 8, mv: 3, rng: 1, counter: 1.0, art: 'Der',
              desc: 'Der Herrscher der Seelenlosen, ganz aus klarem Eis. Durch seine Brust sieht man sein schwarzes Herz. Kein Lebender hat ihn je gesehen und ist zurückgekehrt.' },
-  jadegeneral: { name: 'Jadegeneral', icon: '⚔️', hp: 48, atk: 11, def: 9, mv: 3, rng: 1, counter: 1.0, art: 'Der',
+  jadegeneral: { name: 'Jadegeneral', icon: '⚔️', hp: 48, atk: 11, def: 9, mv: 3, rng: 1, counter: 1.0, jadeSkin: true, art: 'Der',
              desc: 'Der Feldherr der Seelenlosen in prächtiger Jade-Rüstung mit Hörnerhelm und langer Naginata. Wo er steht, kämpfen seine Krieger härter.' },
   kappa:   { name: 'Kappa', icon: '🐢', hp: 18, atk: 6, def: 3, mv: 5, rng: 1, counter: 0.6, art: 'Der',
              desc: 'Ein boshafter Flussdämon mit Schildkrötenpanzer und einer Wasserschale auf dem Kopf. Flink und hinterhältig, lauert er an Ufern und Stegen.' },
@@ -601,10 +604,14 @@ const TYPES = {
              desc: 'Ein edler Samurai zu Pferd in weiß-roter Rüstung auf einem weißen Schlachtross. Seine Lanze bricht jede Linie.' },
   suedwind: { name: 'Reiter des Südwindes', icon: '🏇', hp: 28, atk: 7, def: 3, mv: 7, rng: 2, counter: 0.5, art: 'Die',
              desc: 'Eine leichte Reiterin, schnell wie der Wind aus dem Süden. Sie schießt im Galopp mit dem Bogen, 2 Felder weit.' },
-  jadekav: { name: 'Jade-Kavallerie', icon: '🐴', hp: 50, atk: 12, def: 8, mv: 5, rng: 1, counter: 0.9, art: 'Die',
+  jadekav: { name: 'Jade-Kavallerie', icon: '🐴', hp: 50, atk: 12, def: 8, mv: 5, rng: 1, counter: 0.9, jadeSkin: true, art: 'Die',
              desc: 'Schwere Reiter der Seelenlosen auf Pferden aus purer Jade. Ihre Naginata mähen ganze Reihen nieder.' },
   kaltwind: { name: 'Reiter des kalten Windes', icon: '🌬️', hp: 26, atk: 8, def: 3, mv: 7, rng: 1, counter: 0.6, cav: true, art: 'Der',
              desc: 'Ein leichter Seelenloser in frostigem Fell auf einem bleichen Pferd. Schnell wie der eisige Bergwind fällt er Nachzügler und Bogenschützen an.' },
+  rammbock: { name: 'Rammbock', icon: '🪵', hp: 34, atk: 7, def: 6, mv: 2, rng: 1, counter: 0, wood: true, ram: true, art: 'Der',
+             desc: 'Ein dicker Baumstamm mit eisernem Widderkopf unter einem fahrbaren Dach mit nassen Häuten. Rollt stur aufs Stadttor zu und zertrümmert es. Gegen Kämpfer taugt er kaum, aber Brandpfeile setzen ihm zu.' },
+  stadttor: { name: 'Stadttor', icon: '🚪', hp: 90, atk: 0, def: 6, mv: 0, rng: 0, counter: 0, gate: true, art: 'Das',
+             desc: 'Das schwere Holztor der Stadtmauer. Solange es steht, kommt kein Feind hindurch. Nur ein Rammbock kann es wirklich brechen.' },
   tsuru:   { name: 'Kranich', icon: '🕊️', hp: 20, atk: 6, def: 2, mv: 5, rng: 1, counter: 0.6, fly: true, art: 'Der',
              desc: 'Tsuru, ein weißer Kranich-Geist mit roter Krone. Fliegt über Wasser, Wald und Berge, sieht weit und stößt mit dem spitzen Schnabel herab.' },
   spaeher: { name: 'Schattenspäher', icon: '🌫️', hp: 16, atk: 6, def: 2, mv: 5, rng: 1, counter: 0.6,
@@ -664,7 +671,7 @@ function addUnit(type, side, c, r, wild = false) {
   return u;
 }
 const factionOf = u => u.peace ? 'Neutral' : u.side === 2 ? 'Dunkelwölfe' : u.wild ? (CUR.wildName || 'Uraltes Wesen') : FACTION[u.side];
-const foesOf = u => u.peace ? [] : S.units.filter(o => o.hp > 0 && o.side !== u.side && !o.peace); // Neutrale (Flussdrache) greifen nicht an und werden nicht angegriffen
+const foesOf = u => u.peace ? [] : S.units.filter(o => o.hp > 0 && o.side !== u.side && !o.peace && (!TYPES[u.type].ram || TYPES[o.type].gate) && !(TYPES[u.type].gate)); // Neutrale (Flussdrache) greifen nicht an und werden nicht angegriffen
 
 // ---------- Geheime Orte ----------
 const SECRET_SPOTS = [
@@ -761,10 +768,12 @@ function trigReady(T) {
   if (S.fired[T.id]) return false;
   if (T.after && !(T.after in S.fired)) return false;
   if (T.skipIf && S[T.skipIf]) return false;
+  if (T.unless && S.fired[T.unless]) return false;
   if (T.cleared) return !alive(1).length;
   if (T.captured) return !!S.captured[T.captured];
   if (T.turn && S.turn >= (T.after ? S.fired[T.after] + T.turn : T.turn)) return true;
   if (T.typeGone && !alive(1).some(u => u.type === T.typeGone)) return true;
+  if (T.allyGone && !alive(0).some(u => u.type === T.allyGone)) return true; // z. B. das Stadttor ist gebrochen
   if (T.foeNear && alive(1).some(u => !u.dormant && (!T.foeType || u.type === T.foeType) && hexDist(u.c, u.r, T.foeNear[0], T.foeNear[1]) <= T.foeNear[2])) return true;
   const ps = alive(0);
   if (T.near && ps.some(u => !u.wild && hexDist(u.c, u.r, T.near[0], T.near[1]) <= (T.d ?? 1) && (!T.armyNear || u.army))) return true;
@@ -801,14 +810,17 @@ async function fireEvent(T) {
       const sp = rear && (neighbors(rear.c, rear.r).filter(([c, r]) => c >= rear.c && !unitAt(c, r) && isFinite(TER[terr(c, r)].cost))[0] || freeNear(rear.c, rear.r));
       if (sp) { const u = addUnit(T.spawnRear, 1, sp[0], sp[1]); foeVet(u, S.mission); fxText(rear, 'Hilfe!', '#ffb0a8'); first = rear; }
     }
-    if (T.wake) for (const e of alive(1)) e.waitR = 0;
+    if (T.wake) for (const e of alive(1)) { e.waitR = 0; e.camp = false; } // camp: wartet (z. B. auf dem Hügel), bis ein Ereignis ihn weckt
     if (T.crystal) for (const u of alive(0)) if (u.type === 'tamashi') { u.type = 'tamashi_k'; u.spr = null; fxText(u, 'Kristallschwert!', '#c8f4ff'); first = first || u; }
     if (T.awaken) for (const e of alive(1)) if (e.dormant) { e.dormant = false; fxText(e, T.shout || '…', '#d8d4cc'); first = first || e; }
     for (const [t, c, r] of T.allies || []) {
       const sp = unitAt(c, r) ? freeNear(c, r) : [c, r]; if (!sp) continue;
-      const u = addUnit(t, 0, sp[0], sp[1]); fxText(u, 'Zu Hilfe!', '#9cff9c'); first = first || u;
+      const u = addUnit(t, 0, sp[0], sp[1]); if (T.crysAllies) u.crys = true; fxText(u, T.crysAllies ? 'Kristallwaffen!' : 'Zu Hilfe!', T.crysAllies ? '#c8f4ff' : '#9cff9c'); first = first || u;
     }
     if (T.sanctuary) S.sanctuary = T.sanctuary;
+    // Kristallpfeile: diese Einheiten bekommen Kristallwaffen
+    if (T.crystalize) for (const u of alive(0)) if (T.crystalize.includes(u.type)) { u.crys = true; fxText(u, 'Kristallpfeile!', '#c8f4ff'); }
+    if (T.win) S.goalReached = true;
     for (const [t, c, r] of T.neutral || []) { const u = addUnit(t, 2, c, r, true); u.peace = true; u.moved = u.acted = true; } // friedliches Wesen taucht auf
     // Ein Freund geht eigene Wege (verschwindet, ohne zu fallen)
     if (T.leave) for (const u of alive(0).filter(u => u.type === T.leave)) { fxText(u, 'Bis bald!', '#ffd9a0'); if (S.sel === u) deselect(); S.units.splice(S.units.indexOf(u), 1); }
@@ -830,6 +842,7 @@ async function fireEvent(T) {
     log(T.log || T.title, T.spawn ? 'e' : 's');
     updateUI();
     if (T.text) await showEvent(T.place, T.title, (T.id === 'einsiedler' ? `<img class="finale portrait tall" src="${EINSIEDLER_IMG}" alt="Der alte Einsiedler">` : T.portrait ? `<img class="finale portrait tall" src="${T.portrait}" alt="${T.title}">` : '') + heroText(T.text), T.img && !T.portrait ? { type: T.img, side: T.imgSide || 0 } : null, T.spawn || T.danger ? 'monster' : 'ally', true);
+    if (T.curtain) S.curtainT = performance.now(); // erst nach dem Text: der Nebelvorhang hebt sich
 }
 // ---------- Eroberungs-Felder (Banner) ----------
 const capAt = (c, r) => (S.mission.captures || []).find(f => f.c === c && f.r === r) || (S.mission.captures || []).find(f => f.zone && !S.captured[f.id] && hexDist(f.c, f.r, c, r) <= f.zone); // Zielgebiet: jedes Feld darin zählt
@@ -839,10 +852,11 @@ async function tryCapture(u, quiet) {
   if (!f || S.captured[f.id]) return false;
   const miss = (f.needs || []).filter(id => !S.captured[id]).map(id => S.mission.captures.find(x => x.id === id).name);
   if (miss.length) { if (!quiet) { log(`${f.name}: erst ${miss.join(' und ')} erobern!`, 'e'); fxText(u, 'Noch nicht!', '#ffd27a'); } return false; }
+  if (f.who && u.type !== f.who) { if (!quiet) { log(`${f.name}: Nur ${TYPES[f.who].name} kennt die Leute hier!`, 'e'); fxText(u, 'Nur ' + TYPES[f.who].name + '!', '#ffd27a'); } return false; }
   if (f.guarded && alive(1).some(e => e.guard)) { if (!quiet) { log(`${f.name} ist erst frei, wenn die Wächter gefallen sind!`, 'e'); fxText(u, 'Bewacht!', '#ffd27a'); } return false; }
   S.captured[f.id] = S.turn; u.undo = null;
   fxText(u, 'Erobert!', '#9cd0ff');
-  await fireEvent({ ...f, log: f.log || `${uname(u)} erobert ${f.name}!` });
+  await fireEvent({ ...f, log: f.log || (f.who ? `${uname(u)} besucht: ${f.name}!` : `${uname(u)} erobert ${f.name}!`) });
   if ((S.mission.captureAll && capsDone()) || f.win) S.goalReached = true;
   // Steht schon jemand auf einem Banner, das jetzt frei wird? Dann gleich mit erobern.
   else for (const p of alive(0)) if (await tryCapture(p, true)) break;
@@ -3256,6 +3270,71 @@ const SONNE_MISSIONS = [
   "triggers": [{"id": "nebel", "near": [10, 9], "d": 3, "look": [16, 15], "img": "stein", "imgSide": 1, "place": "Im Nebel vor dem Hafen", "title": "Der Hafen der Träume", "text": "Langsam schält sich der Hafen aus dem Nebel: Laternen, Dächer, Masten. Vor der großen Einfahrt liegt eine schwere Kette quer im Wasser.<br><br>„Da vorne kommen wir nicht durch“, flüstert {HERO}. „Aber da hinten, im Schilf … da ist ein schmaler Kanal.“ Über den Kanal spannen sich zwei rote Brücken, und auf jeder hält ein <b>Steinkrieger</b> Wache.<br><br><small>Rudert durch den schmalen Kanal von hinten in den Hafen und legt am alten Anleger an.</small>"}, {"id": "verfolger1", "captured": "anleger", "spawn": [["spaeher", 20, 10]], "shout": "…", "danger": true, "img": "spaeher", "imgSide": 1, "place": "In den Gassen", "title": "Schatten!", "log": "Ein Schatten springt aus einer Gasse!", "text": "Kaum stehen sie an Land, löst sich ein <b>Schattenspäher</b> aus der Dunkelheit zwischen zwei Häusern."}, {"id": "markt_schatten", "captured": "markt", "spawn": [["spaeher", 26, 21], ["spaeher", 18, 17]], "shout": "…", "log": "Schatten kriechen aus den Gassen!"}, {"id": "teehaus_schatten", "captured": "teehaus", "spawn": [["spaeher", 33, 9], ["spaeher", 27, 9], ["onibi", 31, 14]], "shout": "…", "log": "Schatten und ein Irrlicht vor dem Teehaus!", "img": "onibi", "imgSide": 1, "place": "Vor dem Teehaus", "title": "Sie haben euch gesehen", "text": "Als ihr aus dem Teehaus tretet, wartet draußen schon die Dunkelheit: Schatten, und dazwischen ein kaltes blaues <b>Irrlicht</b>."}, {"id": "verfolger2", "after": "verfolger1", "turn": 3, "spawn": [["spaeher", 24, 27]], "shout": "…", "log": "Wieder ein Schatten in eurem Rücken!"}, {"id": "verfolger3", "after": "verfolger2", "turn": 3, "spawn": [["spaeher", 38, 18]], "shout": "…", "log": "Die Schatten geben nicht auf!"}],
   "outro": "In der Werkstatt ist es warm. Takeo kocht Reissuppe, und zum ersten Mal seit Tagen essen alle, bis sie satt sind. Draußen huschen Schatten an den Fenstern vorbei, doch das Licht der vielen Laternen hält sie fern.<br><br>Später, als die anderen schlafen, sitzen Takeo, Tamashi und {HERO} noch zusammen. „Ihr wollt zum Kalten König?“, fragt Takeo leise. „Dann braucht ihr mehr als Mut. Ihr braucht ein Schiff. Und ich weiß, wo eins liegt.“",
   "reward": []
+ },
+ {
+  "id": "s5",
+  "style": "sonne",
+  "dusk": true,
+  "fog": false,
+  "title": "Der Vorhang geht auf",
+  "sub": "Die Schlacht um Yumenoshima",
+  "harbor": [12, 10, 22, 27],
+  "townHouses": [23, 19, 8],
+  "wall": {"row": 8, "c0": 10, "c1": 39, "gates": [26], "onRow": true},
+  "curtain": [0, 6],
+  "hold": [30, 11],
+  "holdName": "Das Teehaus",
+  "killGoal": "jadegeneral",
+  "map": [
+   "wwwwwwwwwwwhh...RRR.....Rhh.....RRR.....",
+   "wwwwwwwwwwwhh...RRR.....Rhhh....RRR.....",
+   "wwwwwwwwwwwwhh......RRR..hhhRRR.....RRR.",
+   "wwwwwwwwwwww........RRR.....RRR.....RRR.",
+   "wwwwwwwwwwww.h..RRR.....RR......RRR.....",
+   "wwwwwwwwwwwwhh..RRR.....RR......RRR.....",
+   "wwwwwwwwwwwhh...........................",
+   "wwwwwwwwwwwh............................",
+   "wwwwwwwwwwTMMMMMMMMMMMMMTMGMTMMMMMMMMMMT",
+   "wwwwwwwwwwwh..vv..vv..v......vvvvv.vv..v",
+   "wwwwwwwwwwhwwdd...v.v...v.....v..vv.vv.v",
+   "wwwwwwwwwwddwwddv.vvv.vv.v..vvd..vvv.v..",
+   "wwwwwwwwwwwfddwwd.vv..v...vv.dddvvvv.vvv",
+   "wwwwwwwwwwwffddwddvv.vv.v.vddv.ddvv.v...",
+   "wwwwwwwwwwwwfvvdbdddvv...v.d...vvd..v...",
+   "wwwwwwwwwwwwf.dwd.vddv...ddv..vv.d..vv.v",
+   "wwwwwwwwwwwwf.vdwd...ddv.d..vv....dv..v.",
+   "wwwwwwwwwwwwf.ddbdddv.dvd......v.vdd..v.",
+   "wwwwwwwwwwwffvdwwwwwdvdddvv....vv.v.d...",
+   "wwwwwwwwwwwf.dwwwwwwd.dv....v.v.vvv.d.v.",
+   "wwwwwwwwwwfffdwwwwwwwddv.v.vvvv.....d...",
+   "wwwwwwwwwwdddwwwwwwwwd..v.....v.v.ddvvv.",
+   "wwwwwwwwwwwwwwwwwwwwwwd.vv.vvvv...d..vv.",
+   "wwwwwwwwwwwwwwwwwwwwwd..vvvv...vvvdv....",
+   "wwwwwwwwwwddddwwwwwwwdvvvvvv.v.....d....",
+   "wwwwwwwwwwwffdwwwwwwdv..vv.vv..vv.vdv.vv",
+   "wwwwwwwwwwwff.dwwwwwd...v.....v...v..v..",
+   "wwwwwwwwwwwwf.dddddd..v.........vv....vv",
+   "wwwwwwwwwwwwfv...v...v...v.v.vv...vv.vv.",
+   "wwwwwwwwwwwwf..v....vv..v.v..v.v.vvv.v.v"
+  ],
+  "trails": [[[16, 12], [16, 13], [17, 13], [18, 14], [19, 14], [19, 15], [20, 15], [21, 16], [22, 16], [22, 17], [22, 18], [22, 19], [22, 20], [22, 20], [22, 19], [23, 18], [24, 18], [24, 17], [25, 16], [25, 15], [26, 15], [27, 14], [27, 13], [28, 13], [29, 12], [30, 12], [30, 11], [30, 11], [31, 12], [31, 13], [32, 13], [33, 14], [33, 15], [34, 16], [34, 17], [35, 17], [36, 18], [36, 19], [36, 20], [35, 21], [34, 21], [34, 22], [34, 23], [35, 24], [35, 25]], [[26, 8], [26, 7], [26, 6], [26, 5], [26, 4], [26, 3], [26, 2]], [[26, 8], [26, 9], [27, 10], [28, 10], [29, 11], [30, 11]]],
+  "slots": [[25, 8], [24, 8], [28, 8], [27, 8], [23, 8], [29, 8], [22, 8], [30, 8], [21, 8], [31, 8], [25, 9], [27, 9], [24, 9], [28, 9]],
+  "joinUnits": ["tamashi_k", "reisbauer", "stadttor"],
+  "join": [[30, 12], [31, 12], [26, 8]],
+  "decos": [["leuchtturm", 11, 25], ["werft", 13, 10], ["netze", 21, 21], ["netze", 14, 11], ["netze", 15, 16], ["wal", 13, 13], ["teehaus", 30, 11]],
+  "enemy": [["rammbock", 26, 5], ["stein", 25, 5], ["stein", 27, 5], ["holz", 24, 6], ["holz", 25, 6], ["holz", 27, 6], ["holz", 28, 6], ["armbrust", 24, 4], ["armbrust", 28, 4], ["jadegeneral", 26, 1, "camp"], ["jadekav", 25, 1, "camp"], ["jadekav", 27, 1, "camp"], ["kaltwind", 25, 2, "camp"], ["kaltwind", 27, 2, "camp"]],
+  "secrets": [],
+  "secretDeck": [],
+  "critters": [],
+  "foeLvl": 0,
+  "foeUp": 0,
+  "intro": "Spät in der Nacht sitzen {HERO}, Tamashi und Onkel Takeo zwischen den Laternen der Werkstatt.<br><br>„Ich habe von euch gehört! Und ehrlich gesagt, ich dachte, ihr wärt längst tot oder in den Fängen der Seelenlosen!“, sagt Onkel Takeo. Es ist still. „Sie werden kommen. Sie werden euch holen.“<br><br>{HERO} schaut ihn an: „Das wird unser Schicksal sein, wenn wir uns ihm feige hingeben. Wenn wir kämpfen, wird sich uns ein anderer Weg öffnen!“<br><br>„Mit dieser Handvoll Bauern und wilden Tieren wollt ihr kämpfen? Ihr werdet morgen vor einer Armee stehen! Eine Armee, angeführt von einem General!“<br><br>„Aber Onkel, was sollen wir sonst tun? Unsere Freiheit für immer opfern? Du kennst deine Stadt, ihre Bürger, unser Land! Hilf uns. Du kennst doch Menschen, die sich nach Freiheit sehnen, mehr als nach allem anderen. Menschen, die bereit sind zu kämpfen!“<br><br>Da sagt eine unbekannte Stimme aus dem Dunkel: „Wenn du Menschen suchst, um zu kämpfen … dann bist du hier genau richtig!“<br><br><i>Am nächsten Morgen</i> steht {HERO} mit ihren Männern und Frauen am Tor der Stadtmauer. Honoo steht auf einem Turm, die Bogenschützinnen auf dem anderen, der Rest auf dem Wehrgang. Nur Tamashi und ein Bauer fehlen, sie sind noch am Teehaus. Vor der Mauer steht eine Wand aus Nebel, rot gefärbt vom Licht der aufgehenden Sonne.",
+  "goalText": "Zwei Aufgaben zugleich: Kokoro und die anderen halten Mauer und Tor. Tamashi läuft durch die Stadt und holt Verstärkung mit Kristallwaffen: erst bei der Bogenmacherin, dann im Dōjō, dann in der Kaserne und am Fuchsschrein am Hafen. Nur Tamashi kennt die Leute dort. Sieg: Der Jadegeneral fällt und das Teehaus ist gehalten. Niederlage: Ein Feind betritt das Teehaus, oder Kokoro fällt.",
+  "startTrig": true,
+  "captures": [{"id": "bogen", "c": 33, "r": 12, "name": "Bogenmacherin", "who": "tamashi_k", "crysAllies": true, "allies": [["yumi", 33, 12], ["yumi", 34, 12]], "img": "yumi", "place": "Bei der Bogenmacherin", "title": "Brandpfeile", "text": "In der kleinen Werkstatt riecht es nach Harz und Pech. Die Bogenmacherin erkennt Tamashi sofort und ruft zwei junge Schützinnen herbei.<br><br>„Holz brennt“, sagt sie und reicht ihnen Köcher voller Brandpfeile mit Kristallspitzen. „Und dieser Rammbock ist aus Holz.“<br><br><small>Zwei Bogenschützinnen mit Brandpfeilen schließen sich an. Weiter zum Dōjō!</small>"}, {"id": "dojo", "c": 24, "r": 12, "name": "Dōjō", "who": "tamashi_k", "needs": ["bogen"], "crysAllies": true, "allies": [["samurai", 24, 12], ["samurai", 25, 12]], "img": "samurai", "place": "Im Dōjō", "title": "Die Klingen des reinen Blutes", "text": "Im Dōjō knien zwei Samurai vor einem kleinen Altar. Vor ihnen liegen Schwerter, deren Klingen wie Eis schimmern.<br><br>„Wir haben auf diesen Tag gewartet“, sagt der Ältere und erhebt sich. „Kristall schneidet, wo Stahl nur abprallt.“<br><br><small>Zwei Samurai mit Kristallklingen schließen sich an. Weiter zur Kaserne am Hafen!</small>"}, {"id": "kaserne", "c": 19, "r": 16, "name": "Kaserne am Hafen", "who": "tamashi_k", "needs": ["dojo"], "crysAllies": true, "allies": [["ritter", 19, 16], ["ritter", 20, 16]], "img": "ritter", "place": "In der Kaserne", "title": "Die Ritter des reinen Blutes", "text": "Im Hof der alten Kaserne scharren zwei weiße Pferde. Ihre Reiter tragen Lanzen mit Spitzen aus Kristall.<br><br>„Der Jadegeneral reitet nie allein“, sagt einer. „Aber diesmal reiten wir ihm entgegen.“<br><br><small>Zwei Ritter mit Kristalllanzen schließen sich an. Ganz in der Nähe leuchtet der Fuchsschrein …</small>"}, {"id": "fuchs", "c": 26, "r": 17, "name": "Fuchsschrein", "deco": "torii", "who": "tamashi_k", "needs": ["dojo"], "allies": [["kitsune", 26, 17]], "crystalize": ["yumi", "honoo"], "img": "kitsune", "place": "Am Fuchsschrein", "title": "Der Fuchs ist zurück!", "text": "Am Fuchsschrein flackert eine Kerze. Dann sitzt da plötzlich ein Fuchs mit drei Schwänzen und grinst.<br><br>„Habt ihr mich vermisst? Ich hab doch gesagt, ich komme wieder.“ Er schnippt mit dem Schwanz, und die Pfeile in allen Köchern beginnen zu glitzern.<br><br><small>Kitsune ist zurück! Alle Bogenschützinnen und Honoo haben jetzt Kristallpfeile.</small>"}],
+  "triggers": [{"id": "vorhang", "turn": 1, "curtain": true, "look": [26, 3], "lookR": 4, "img": "jadegeneral", "imgSide": 1, "place": "Vor der Stadtmauer", "title": "Der Vorhang geht auf", "text": "Langsam lichtet sich der rote Nebel, wie ein Vorhang im Theater.<br><br>Auf einem entfernten Hügel steht der <b>Jadegeneral</b>, begleitet von seinen Reitern. Davor rückt das Fußvolk an: Holzkrieger, Steinkrieger, Armbrustschützen, und in ihrer Mitte rollt ein <b>Rammbock</b> auf das Tor zu.<br><br><small>Haltet das Tor! Brandpfeile setzen dem Rammbock zu. Tamashi: Lauf zur Bogenmacherin!</small>"}, {"id": "welle2", "turn": 4, "spawn": [["holz", 18, 3], ["holz", 19, 3], ["holz", 33, 3], ["stein", 20, 2], ["lava", 32, 2], ["lava", 34, 2]], "danger": true, "look": [26, 3], "lookR": 3, "img": "lava", "imgSide": 1, "place": "Vor der Stadtmauer", "title": "Die zweite Welle", "text": "Hörner dröhnen über die Reisfelder. Eine zweite Welle rückt an: Holzkrieger, ein Steinkrieger und <b>Lava-Krieger</b>, deren Pfeile wie glühende Kohlen fliegen.<br><br><small>Samurai mit Kristallklingen wären jetzt Gold wert. Tamashi: ab ins Dōjō!</small>"}, {"id": "torbruch", "allyGone": "stadttor", "wake": true, "danger": true, "look": [26, 8], "img": "jadegeneral", "imgSide": 1, "place": "Am Stadttor", "title": "Das Tor ist gebrochen!", "text": "Mit einem letzten Krachen zersplittert das Tor. Auf dem Hügel hebt der Jadegeneral sein Schwert, und seine Reiter preschen los.<br><br><small>Schützt das Teehaus! Gegen Jade helfen nur Kristallwaffen.</small>"}, {"id": "angriff", "turn": 8, "unless": "torbruch", "wake": true, "danger": true, "look": [26, 2], "img": "jadegeneral", "imgSide": 1, "place": "Auf dem Hügel", "title": "Der General reitet an", "text": "Dem Jadegeneral dauert das alles zu lange. Er hebt sein Schwert, und mit seinen Reitern donnert er den Hügel hinab.<br><br><small>Gegen Jade helfen nur Kristallwaffen!</small>"}, {"id": "sieg", "typeGone": "jadegeneral", "win": true, "look": [26, 4], "place": "Vor der Stadtmauer", "title": "Der General ist gefallen!", "text": "Der Jadegeneral stürzt, und sein grüner Panzer zerspringt in tausend Splitter. Was von seinem Heer übrig ist, flieht in die Reisfelder."}],
+  "outro": "Die Stadt jubelt. Die Menschen von Yumenoshima kommen aus ihren Häusern, umarmen die Bauern, die Samurai, die Ritter, sogar den Fuchs.<br><br>Nur {HERO} lacht nicht. Sie steht auf der Mauer und schaut nach Norden, dorthin, wo hinter den Bergen der Kalte König wartet.<br><br>„Er wird wiederkommen. Mit mehr als einem General.“ Sie dreht sich zu den anderen um. „<b>Wir müssen uns zurückziehen.</b>“<br><br>Onkel Takeo nickt langsam. „Dann ist es Zeit für das Schiff.“",
+  "reward": []
  }
 ];
 
@@ -3505,7 +3584,7 @@ function setupBattle(M, roster) {
     for (const [t, c, r] of M.ensure || []) if (!S.units.some(u => u.side === 0 && u.type === t)) { const sp = unitAt(c, r) ? freeNear(c, r) : [c, r]; if (sp) addUnit(t, 0, sp[0], sp[1]); } // Wegbegleiter, der sicher dabei sein muss
     S.fired = {};
     for (const [t, c, r] of M.neutral || []) { const u = addUnit(t, 2, c, r, true); u.peace = true; u.dir = 1; }
-    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r, flag === 'wild'); if (flag === 'wild') u.waitR = 3; if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; if (flag === 'rock') u.dormant = u.rock = true; u.post = [c, r]; foeVet(u, M); }
+    for (const [t, c, r, flag] of M.enemy) { const u = addUnit(t, 1, c, r, flag === 'wild'); if (flag === 'wild') u.waitR = 3; if (flag === 'guard') u.guard = true; if (flag === 'tower') { u.guard = true; u.tower = true; } if (flag === 'wait') u.waitR = 3; if (flag === 'camp') u.camp = true; if (flag === 'sally') u.sally = true; if (flag === 'dormant') u.dormant = true; if (flag === 'rock') u.dormant = u.rock = true; u.post = [c, r]; foeVet(u, M); }
   }
   document.getElementById('log').innerHTML = '';
   document.getElementById('overlay').classList.add('hidden');
@@ -3520,6 +3599,7 @@ function beginBattle() {
   log('— Runde 1 —', 's');
   showBanner('Du bist am Zug!', 'Runde 1');
   updateUI();
+  if (S.mission.startTrig) setTimeout(() => runTriggers(), 1400); // Ereignis gleich zu Beginn (z. B. Vorhang)
 }
 function introImg(id) {
   const I = { m1: [LINDENTAL_IMG, 'Zwei Gefährten blicken auf Lindenhain'], m2: [NEBEL_IMG, 'Zwei Gefährten blicken über die Nebelhügel'], m3: [WALD_IMG, 'Zwei Gefährten am Rand des Waldes'], m4: [NORDMAUER_IMG, 'Zwei Gefährten vor der Palisade von Eldor'], m5: [BERGFRIED_IMG, 'Zwei Gefährten in der Gasse unter dem Bergfried'] }[id];
@@ -3622,9 +3702,11 @@ function showGoals() {
   const M = S.mission, li = (done, txt) => `<li class="${done ? 'cur' : ''}"><span class="mk">${done ? '✔' : '○'}</span>${txt}</li>`, rows = [];
   if (M.captures) for (const f of M.captures) {
     const done = !!S.captured[f.id], miss = (f.needs || []).filter(id => !S.captured[id]).map(id => M.captures.find(x => x.id === id).name);
-    rows.push(li(done, `<b>${f.name}</b> ${f.win ? 'erreichen' : 'erobern'}${f.win ? ' <small>(Ziel der Mission)</small>' : ''}${!done && miss.length ? ` <small>erst nach: ${miss.join(', ')}</small>` : ''}`));
+    rows.push(li(done, `<b>${f.name}</b> ${f.who ? 'besuchen <small>(nur ' + TYPES[f.who].name + ')</small>' : f.win ? 'erreichen' : 'erobern'}${f.win ? ' <small>(Ziel der Mission)</small>' : ''}${!done && miss.length ? ` <small>erst nach: ${miss.join(', ')}</small>` : ''}`));
   } else if (M.goal) rows.push(li(S.goalReached, `<b>${M.goal.name || 'Das Ziel'}</b> erreichen`));
   else if (!M.tutorial) { const n = alive(1).length + alive(2).filter(u => !u.peace).length; rows.push(li(n === 0 && !(M.triggers || []).some(T => T.spawn && !(T.id in S.fired)), `Alle Feinde besiegen <small>(noch ${n} auf der Karte${(M.triggers || []).some(T => T.spawn && !(T.id in S.fired)) ? ', es können weitere kommen' : ''})</small>`)); }
+  if (M.killGoal) { const g = alive(1).some(u => u.type === M.killGoal); rows.unshift(li(!g, `<b>${TYPES[M.killGoal].name}</b> besiegen <small>(Ziel der Mission)</small>`)); }
+  if (M.hold) { const lost = alive(1).some(e => e.c === M.hold[0] && e.r === M.hold[1]); rows.unshift(li(!lost, `<b>${M.holdName || 'Den Ort'}</b> halten <small>(kein Feind darf hinein)</small>`)); }
   const hero = S.units.find(u => u.side === 0 && TYPES[u.type].hero);
   if (hero && !M.skirmish) rows.push(li(hero.hp > 0, `${uname(hero)} darf nicht fallen <small>(${hero.hp > 0 ? 'lebt' : 'gefallen'})</small>`));
   for (const u of S.units.filter(u => u.side === 0 && TYPES[u.type].protect)) rows.push(li(u.hp > 0, `${TYPES[u.type].name} beschützen <small>(${u.hp > 0 ? 'in Sicherheit' : 'geholt'})</small>`));
@@ -3715,6 +3797,7 @@ function moveCost(u, c, r) {
   const t = terr(c, r);
   if (S && S.boats && u.side === 0 && t === 'w') return 1; // im Boot über das Wasser
   if (TYPES[u.type].swim) return t === 'w' || t === 'u' ? 1 : Infinity; // schwimmt nur im Fluss
+  if ((t === 'M' || t === 'T') && u.side !== 0) return Infinity; // Wehrgang und Türme: nur für die Verteidiger
   if (TYPES[u.type].fly) return 1; // fliegt über alles hinweg, auch über Mauern, Türme und Häuser
   if (t === 'n' && !GATE_OPEN) return Infinity;
   if (t === 'f' && TYPES[u.type].oak) return 0.5;
@@ -3791,6 +3874,7 @@ function updateVision() {
   for (const h of HEX.values()) for (const u of me) if (hexDist(u.c, u.r, h.c, h.r) <= (FOGZONE.has(K(h.c, h.r)) ? Math.min(2, sightOf(u)) : sightOf(u))) { const k = K(h.c, h.r); S.vis.add(k); S.seen.add(k); break; }
 }
 function shown(u) {
+  if (u.side !== 0 && curtainA() > 0.3 && S.mission.curtain && u.r <= S.mission.curtain[1]) return false; // im Nebelvorhang verborgen
   if (!S.fog || u.side === 0) return true;
   if (u.lure && S.turn <= u.lureUntil) return true; // weggelockte Reiter sieht man davonreiten
   if (u.px != null) { const h = pixelToHex(u.px, u.py); if (h && S.vis.has(K(h.c, h.r))) return true; }
@@ -3827,14 +3911,14 @@ function catBonus(att, def) { // [Angriffsbonus, Verteidigungsbonus]
   return [atk, dd];
 }
 function calcDmg(att, ac, ar, def, dc, dr, opt = {}) {
-  const A = TYPES[att.type], D = TYPES[def.type];
+  const A = TYPES[att.type], D = TYPES[def.type], aCr = A.crystal || att.crys, dCr = D.crystal || def.crys;
   let atk = A.atk + att.lvl;
   if (A.charge && !opt.counter && (opt.steps || 0) >= 2) atk += 3;
   if (A.hill && terr(ac, ar) === 'h') atk += 2;
   if (!opt.counter && !A.hero && S.units.some(h => h.hp > 0 && h.side === att.side && TYPES[h.type].hero && hexDist(h.c, h.r, ac, ar) === 1)) atk += 1;
   const [cbA, cbD] = catBonus(att, def); atk += cbA;
   if (A.pick && D.stone) atk += 5;
-  if (A.crystal && D.jadeSkin) atk += 22;
+  if (aCr && D.jadeSkin) atk += 22;
   if (A.fire && D.wood) atk += 3;
   let d = D.def + def.lvl + cbD, tdef = TER[terr(dc, dr)].def;
   if (A.magic) { d = Math.floor(d / 2); tdef = 0; }
@@ -3843,8 +3927,11 @@ function calcDmg(att, ac, ar, def, dc, dr, opt = {}) {
   let dmg = (atk * 2 - d - tdef) * (0.55 + 0.45 * Math.max(0, hp) / maxHp(att));
   if (opt.counter) dmg *= A.counter;
   if (catOf(att.type) === 'bogen' && D.stone) dmg *= 0.3; // Pfeile prallen von Stein ab
-  if (D.jadeSkin && !A.crystal) dmg *= 0.15;                  // gewöhnliche Waffen prallen an Jade ab
-  if (D.crystal && A.jadeSkin) dmg *= 0.5;                    // die kristallklare Klinge pariert Jadeblitze
+  if (D.jadeSkin && !aCr) dmg *= 0.15;                  // gewöhnliche Waffen prallen an Jade ab
+  if ('MT'.includes(terr(dc, dr)) && !'MT'.includes(terr(ac, ar))) dmg *= A.rng >= 2 ? 0.75 : 0.6; // Schutz hinter den Zinnen
+  if (A.ram) dmg *= D.gate ? 3 : 0.2;                          // der Rammbock bricht Tore, gegen Kämpfer taugt er kaum
+  else if (D.gate) dmg *= 0.5;                                 // das schwere Tor hält viel aus
+  if (dCr && A.jadeSkin) dmg *= 0.5;                    // die kristallklare Klinge pariert Jadeblitze
   return Math.max(1, dmg);
 }
 function preview(att, pos, def) {
@@ -3870,7 +3957,7 @@ function attackTargets(u, reach) {
     let best = null, bs = -1e9;
     for (const p of cands) {
       const dist = hexDist(p.c, p.r, e.c, e.r);
-      if (dist > T.rng) continue;
+      if (dist > T.rng + (T.rng >= 2 && terr(p.c, p.r) === 'T' ? 1 : 0)) continue; // vom Turm schießt man weiter
       let s = 0;
       if (p.steps === 0 && p.c === u.c && p.r === u.r) s += 100;
       s += TER[terr(p.c, p.r)].def * 2;
@@ -3946,7 +4033,7 @@ function onHit(att, def) {
   if (A.fire && D.wood) { def.burn = 3; def.burnBy = att; fxText(def, 'Brennt!', '#ffb050', 250); log(`${uname(def)} fängt Feuer!`, att.side === 0 ? 'p' : 'e'); }
   if (A.net) { def.netted = Math.min(2, (def.netted || 0) + 1); fxText(def, def.netted > 1 ? 'Fest im Netz!' : 'Im Netz!', '#e8dcc0', 250); log(`${uname(def)} verheddert sich im Netz.`, att.side === 0 ? 'p' : 'e'); }
   if (catOf(att.type) === 'bogen' && D.stone) fxText(def, 'Prallt ab!', '#d8d4cc', 250);
-  if (D.jadeSkin && !A.crystal) fxText(def, 'Prallt ab!', '#9affd0', 250);
+  if (D.jadeSkin && !(A.crystal || att.crys)) fxText(def, 'Prallt ab!', '#9affd0', 250);
   if (A.bolt) { // grüne Blitze setzen Häuser in Brand
     const h = [[def.c, def.r], ...neighbors(def.c, def.r)].find(([c, r]) => terr(c, r) === 'v' && !(S.fires || []).includes(K(c, r)));
     if (h) { S.fires = (S.fires || []).concat(K(h[0], h[1])); log('Ein Haus fängt Feuer!', 'e'); }
@@ -4032,6 +4119,7 @@ function startSide(side) {
     u.hp = Math.min(maxHp(u), u.hp + heal);
     if (u.hp > before) fxText(u, '+' + (u.hp - before), '#9cff9c');
     u.moved = u.acted = false; u.steps = 0; u.undo = null; u.rested = false;
+    if (TYPES[u.type].gate) u.moved = u.acted = true; // das Tor bewegt sich nicht
   }
 }
 async function endTurn() {
@@ -4089,7 +4177,8 @@ function checkEnd() {
   const p = alive(0).length, e = alive(1).length + alive(2).filter(u => !u.peace).length;
   let res = null;
   const protLost = S.units.some(u => u.side === 0 && TYPES[u.type].protect && u.hp <= 0);
-  if (!p || !heroAlive || protLost) res = false;
+  const holdLost = M.hold && alive(1).some(e => e.c === M.hold[0] && e.r === M.hold[1]);
+  if (!p || !heroAlive || protLost || holdLost) res = false;
   else if ((!e && !M.captures && !(M.triggers || []).some(T => T.spawn && !(S.fired && T.id in S.fired))) || S.goalReached) res = true;
   if (res === null) return false;
   S.phase = 'over'; S.busy = false; deselect();
@@ -4129,8 +4218,9 @@ async function aiAct(u) {
   const T = TYPES[u.type], sk = K(u.c, u.r);
   const reach = reachable(u);
   if (u.waitR && alive(0).some(p => hexDist(p.c, p.r, u.c, u.r) <= u.waitR)) u.waitR = 0;
+  if (u.camp && u.side === 1 && alive(0).some(p => hexDist(p.c, p.r, u.c, u.r) <= 2)) u.camp = false;
   const guardLeash = u.guard && !u.tower ? (u.type === 'aschfuerst' ? 1 : u.alert ? 3 : 2) : 0;
-  const holding = (u.guard && !guardLeash) || (u.sally && !GATE_OPEN) || u.waitR || (S.lost && S.lost[u.type] > S.turn);
+  const holding = u.camp || (u.guard && !guardLeash) || (u.sally && !GATE_OPEN) || u.waitR || (S.lost && S.lost[u.type] > S.turn);
   const post = u.post || [u.c, u.r];
   let cands = holding ? [[sk, reach.get(sk)]] : standable(u, reach);
   if (guardLeash) cands = cands.filter(([k, n]) => hexDist(n.c, n.r, post[0], post[1]) <= guardLeash);
@@ -4311,7 +4401,7 @@ const GROUND = { 'S': [222, 208, 164], 'R': [104, 150, 128], 'o': [136, 158, 84]
   'b': [56, 118, 176], 'd': [116, 166, 78], 's': [150, 146, 136], 'x': [150, 146, 136], 'm': [140, 138, 132], 't': [140, 138, 132], 'k': [154, 150, 140], 'z': [170, 150, 98],
   'c': [132, 164, 80], 'g': [118, 96, 62], 'y': [118, 96, 62], 'p': [126, 112, 70], 'q': [126, 112, 70], 'n': [126, 112, 70], 'r': [134, 116, 84], 'e': [120, 128, 84], 'a': [112, 158, 80], 'j': [128, 158, 84], 'i': [60, 122, 170], 'l': [146, 152, 88], 'W': [146, 152, 88], 'N': [126, 112, 70], 'B': [150, 146, 104], 'V': [150, 146, 104], 'K': [150, 146, 104], 'H': [118, 164, 76], 'F': [132, 150, 80], 'I': [116, 166, 78] };
 // Land der roten Sonne: helleres, türkises Grün und hellgraue Berge
-const GROUND_SONNE = { 'S': [226, 214, 176], '.': [128, 194, 164], 'd': [128, 194, 164], 'o': [136, 196, 166], 'v': [138, 196, 166], 'f': [84, 150, 124], 'h': [186, 192, 188], 'R': [122, 182, 168], 'w': [60, 132, 170], 'b': [60, 132, 170], 'u': [96, 164, 184] };
+const GROUND_SONNE = { 'M': [128, 194, 164], 'T': [128, 194, 164], 'G': [168, 146, 98], 'S': [226, 214, 176], '.': [128, 194, 164], 'd': [128, 194, 164], 'o': [136, 196, 166], 'v': [138, 196, 166], 'f': [84, 150, 124], 'h': [186, 192, 188], 'R': [122, 182, 168], 'w': [60, 132, 170], 'b': [60, 132, 170], 'u': [96, 164, 184] };
 const groundOf = t => (STYLE === 'sonne' && GROUND_SONNE[t]) || GROUND[t];
 const SOFT = new Set(['S', '.', 'f', 'h', 'v', 'd', 'z', 'o', 'c', 'a', 'j', 'l', 'W', 'I', 'H']), WET = new Set(['w', 'u', 'b', 'i']), ROADS = new Set(['d', 's', 'b', 't', 'k', 'y', 'n']);
 const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
@@ -4900,6 +4990,26 @@ function buildAmbient() {
   // gleichmäßig über die ganze Karte verteilen (nicht nur den Norden), höchstens 320 Schwaden
   const seaPick = sea.length <= 420 ? sea : sea.filter((_, i) => i % Math.ceil(sea.length / 420) === 0);
   AMB = { motes: motes.slice(0, 48), clouds, mist, sea: seaPick };
+}
+// Nebelvorhang (M.curtain = [r0, r1]): dichter, rot angehauchter Nebel, der sich hebt
+function curtainA() {
+  if (!S || !S.mission || !S.mission.curtain) return 0;
+  if (!S.curtainT) return 1;
+  return Math.max(0, 1 - (performance.now() - S.curtainT) / 3500);
+}
+function drawCurtain(now) {
+  const a = curtainA(); if (a <= 0) return;
+  const [r0, r1] = S.mission.curtain, t = now / 1000;
+  for (const h of HEX.values()) {
+    if (h.r < r0 || h.r > r1 + 1) continue;
+    const { x, y } = center(h.c, h.r); if (!inView(x, y, 300)) continue;
+    const k = hash(h.c, h.r, 540), dx = Math.sin(t * 0.2 + k * 9) * 30 - (1 - a) * 400 * (k - 0.5);
+    ctx.globalAlpha = a * (h.r > r1 ? 0.5 : 0.95);
+    ctx.drawImage(SPR.mist, x + dx - 160, y - 70 - (1 - a) * 60, 320, 140);
+  }
+  ctx.globalAlpha = a * 0.25; ctx.fillStyle = '#ff9a7a';
+  const p0 = center(0, r0), p1 = center(0, r1); ctx.fillRect(-5000, p0.y - R * 2, 20000, p1.y - p0.y + R * 3);
+  ctx.globalAlpha = 1;
 }
 function drawAmbientUnder(now) {
   const t = now / 1000;
@@ -7990,7 +8100,8 @@ function harborBerths([c0, r0, c1, r1]) {
 // Stadtmauer (M.wall = {row, c0, c1, gates:[c]}): weiße Mauer mit Ziegelkappe zwischen Zeile row und row+1, Tore und Ecktürme
 function drawTownWall(g, W) {
   const pts = [];
-  for (let c = W.c0; c <= W.c1; c++) { const a = center(c, W.row), b = center(c, W.row + 1); pts.push({ c, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 4 }); }
+  if (W.onRow) { const hw = (center(1, W.row).x - center(0, W.row).x) / 2; for (let c = W.c0; c <= W.c1 + 1; c++) { const a = center(c, W.row); pts.push({ c, x: a.x - hw, y: a.y + 12 }); } } // Mauer auf einer Reihe begehbarer Felder (Wehrgang)
+  else for (let c = W.c0; c <= W.c1; c++) { const a = center(c, W.row), b = center(c, W.row + 1); pts.push({ c, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 4 }); }
   const Hh = 15;
   // gemalte Mauerteile (Michis Bild): Mauerstück wird geschert, damit es waagrecht liegt
   // gemalte Mauer und Tor von vorn (Michis Bild): Mauerstücke aneinandergereiht, Tor darüber, Ecktürme an den Enden
@@ -7999,6 +8110,7 @@ function drawTownWall(g, W) {
     const L = Math.abs(pts[1].x - pts[0].x), sc = L * 1.04 / MI.naturalWidth, mh = MI.naturalHeight * sc;
     for (let i = 0; i < pts.length - 1; i++) {
       const p = pts[i], q = pts[i + 1], mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2 + 6;
+      if (W.onRow && terr(p.c, W.row) === 'T') continue;
       shadowEll(g, mx, my, L * 0.6, 5, 0.25);
       g.drawImage(MI, mx - L * 0.52, my - mh, L * 1.04, mh);
     }
@@ -8006,7 +8118,8 @@ function drawTownWall(g, W) {
       const x = (pts[i].x + pts[i + 1].x) / 2, y = (pts[i].y + pts[i + 1].y) / 2 + 6, gw = GI.naturalWidth * sc * 1.15, gh = GI.naturalHeight * sc * 1.15;
       g.drawImage(GI, x - gw / 2, y - gh, gw, gh);
     } }
-    for (const p of [pts[0], pts[pts.length - 1]]) { const w = L * 0.95, h = w * TI.naturalHeight / TI.naturalWidth; shadowEll(g, p.x, p.y + 6, w * 0.45, 6, 0.3); g.drawImage(TI, p.x - w / 2, p.y + 12 - h, w, h); }
+    if (W.onRow) for (let i = 0; i < pts.length - 1; i++) if (terr(pts[i].c, W.row) === 'T') { const x = (pts[i].x + pts[i + 1].x) / 2, y = pts[i].y + 2, w = L * 1.05, h = w * TI.naturalHeight / TI.naturalWidth; shadowEll(g, x, y + 4, w * 0.45, 6, 0.3); g.drawImage(TI, x - w / 2, y + 10 - h, w, h); }
+    if (!W.onRow) for (const p of [pts[0], pts[pts.length - 1]]) { const w = L * 0.95, h = w * TI.naturalHeight / TI.naturalWidth; shadowEll(g, p.x, p.y + 6, w * 0.45, 6, 0.3); g.drawImage(TI, p.x - w / 2, p.y + 12 - h, w, h); }
     return;
   }
   for (let i = 0; i < pts.length - 1; i++) {
@@ -8185,6 +8298,7 @@ function torii(g, x, y, explored) {
 function sonneTitleImg() { return SONNE_TITLE_IMG; }
 // Gemalte Figuren (Bild-KI, von Michi): [ruhig, im Schlag] mit Höhe in Figuren-Einheiten
 const PAINTED = {
+  rammbock: { img: ['img/einheiten/rammbock-ruhe.webp', 'img/einheiten/rammbock-ruhe.webp'], h: [46, 46], ax: [0.5, 0.5] },
   holz: { img: ['img/einheiten/holz-ruhe.webp', 'img/einheiten/holz-schlag.webp'], h: [50, 54.2] },
   kokoro: { img: ['img/einheiten/kokoro-ruhe.webp', 'img/einheiten/kokoro-schlag.webp'], h: [62, 45.3], ax: [0.43, 0.53] },
   honoo: { img: ['img/einheiten/honoo-ruhe.webp', 'img/einheiten/honoo-schlag.webp'], h: [56.3, 70], ax: [0.49, 0.41] },
@@ -8372,6 +8486,7 @@ function render(now) {
   // Hohe Kartenobjekte (Baumhaus) über den Bäumen zeichnen
   for (const [kind, G] of MAP_GOALDECO) if (kind === 'baumhaus' || kind === 'fuchsbau') { const gp = center(G.c, G.r); if (inView(gp.x, gp.y, 140)) (kind === 'baumhaus' ? baumhaus : fuchsbau)(ctx, gp.x, gp.y); }
   updateVision(); drawFog();
+  drawCurtain(now);
   drawLanternGlow(now);
   if (S.mission.goal) {
     const G = S.mission.goal, gp = center(G.c, G.r), pl = 0.5 + 0.5 * Math.sin(now / 300);
@@ -8486,6 +8601,7 @@ function render(now) {
   requestAnimationFrame(render);
 }
 function drawUnit(u, x, y, now) {
+  if (TYPES[u.type].gate) return drawUnitBar(u, x, y - 18); // das Tor ist Teil der Mauer, nur die Lebensleiste zeigen
   if (u.rock && u.dormant) return drawBoulder(ctx, x, y + R * 0.35, u.id);
   const done = isDone(u);
   const key = Math.floor(now / 100) + (done ? 'd' : '') + dpr + u.type + (u.face || 0) + (u.striking ? 's' : '');
